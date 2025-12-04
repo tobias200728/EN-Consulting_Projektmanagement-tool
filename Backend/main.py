@@ -5,12 +5,21 @@ import models
 from database import engine, SessionLocal, Base
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
+from fastapi.middleware.cors import CORSMiddleware
 
 #uiii
 app = FastAPI()
 models.Base.metadata.create_all(bind=engine)
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class UserData(BaseModel):
     isadmin: bool = False
@@ -34,7 +43,7 @@ def get_db():
 
 
 
-@app.post("/adduser/")
+@app.post("/adduser")
 async def create_user(userdata: UserData,  db: Session = Depends(get_db)):
     try:
         # Prüfen, ob der Benutzername schon existiert
@@ -69,7 +78,7 @@ async def get_user_by_id(user_id : int, db: Session = Depends(get_db)):
 
 
 
-@app.post("/login/")
+@app.post("/login")
 async def login(username: str, password: str, db: Session = Depends(get_db)):
     # 1. Benutzer suchen
     user = db.query(models.Users).filter(models.Users.username == username).first()

@@ -1,33 +1,55 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, CheckBox } from 'react-native';
-import Home from './Home';
 
-export default function Login({ navigation }) {
-  const [email, setEmail] = useState('');
+const Login = ({ navigation }) => {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
 
-  const handleLogin = () => {
-    console.log('Logging in with', { email, password, rememberMe });
+   const handleLogin = async () => {
     
     //API-Call
-
-    //wenn erfolgreich:
-    navigation.navigate('Layout');
-  };
+    
+  //   try {
+  //     const res = await fetch("http://127.0.0.1:8000/login/", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/x-www-form-urlencoded"
+  //       },
+  //       body:
+  //         username,
+  //         password
+  //     }).toString()
+  
+  //     console.log("Status:", res.status);
+  
+  //     if (!res.ok) {
+  //       const err = await res.json();
+  //       console.log("Error:", err);
+  //       return;
+  //     }
+  
+  //     const data = await res.json();
+  //     console.log("Login erfolgreich:", data); 
+  
+       navigation.navigate("Dashboard");
+  
+  //   } catch (error) {
+  //     console.log("Network error:", error);
+  //   }
+    }
 
   return (
     <View style={styles.container}>
       <View style={styles.loginBox}>
         <Text style={styles.title}>EN-Consulting</Text>
-        <Text style={styles.subtitle}>Sign in to your account</Text>
 
-        <Text style={styles.label}>Email</Text>
+        <Text style={styles.label}>Name</Text>
         <TextInput
           style={styles.input}
-          placeholder="deine.email@en-consulting.com"
-          value={email}
-          onChangeText={setEmail}
+          placeholder="Benutzername"
+          value={username}
+          onChangeText={setUsername}
         />
 
         <Text style={styles.label}>Passwort</Text>
@@ -40,10 +62,10 @@ export default function Login({ navigation }) {
         />
 
         <View style={styles.row}>
-          <View style={styles.rememberMe}>
-            <CheckBox value={rememberMe} onValueChange={setRememberMe} />
-            <Text style={styles.rememberText}>Remember me</Text>
-          </View>
+          {/* <View style={styles.rememberMe}> */}
+            {/* <CheckBox value={rememberMe} onValueChange={setRememberMe} /> */}
+            {/* <Text style={styles.rememberText}>Remember me</Text> */}
+          {/* </View> */}
           <TouchableOpacity>
             <Text style={styles.forgot}>Forgot password?</Text>
           </TouchableOpacity>
@@ -133,3 +155,5 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 });
+
+export default Login

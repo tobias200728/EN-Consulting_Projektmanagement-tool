@@ -21,7 +21,7 @@ export default function Layout({ children }) {
     <View style={styles.container}>
       {/* Sidebar */}
       <Animated.View style={[styles.sidebar, { left: slideAnim }]}>
-        <Sidebar onNavigate={toggleMenu} />
+        <Sidebar onPress={toggleMenu} />
       </Animated.View>
 
       {/* Overlay */}
