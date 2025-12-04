@@ -6,38 +6,35 @@ const Login = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
 
-   const handleLogin = async () => {
-    
-    //API-Call
-    
-  //   try {
-  //     const res = await fetch("http://127.0.0.1:8000/login/", {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/x-www-form-urlencoded"
-  //       },
-  //       body:
-  //         username,
-  //         password
-  //     }).toString()
-  
-  //     console.log("Status:", res.status);
-  
-  //     if (!res.ok) {
-  //       const err = await res.json();
-  //       console.log("Error:", err);
-  //       return;
-  //     }
-  
-  //     const data = await res.json();
-  //     console.log("Login erfolgreich:", data); 
-  
-       navigation.navigate("Dashboard");
-  
-  //   } catch (error) {
-  //     console.log("Network error:", error);
-  //   }
+const handleLogin = async () => {
+  try {
+    const formData = new URLSearchParams();
+    formData.append("username", username);
+    formData.append("password", password);
+
+    const res = await fetch("http://192.168.50.145:8000/login", {  //Coban: 192.168.50.145,  127.0.0.1, 
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: formData.toString(),
+    });
+
+    const data = await res.json();
+    console.log("Login response:", data);
+
+    if (data.status === "2fa_required") {
+      navigation.navigate("TwoFA", { username: data.username, user_id: data.user_id });
+    } else if (data.status === "ok") {
+      navigation.navigate("Dashboard");
     }
+
+  } catch (error) {
+    console.log("Network error:", error);
+  }
+};
+
+
 
   return (
     <View style={styles.container}>
