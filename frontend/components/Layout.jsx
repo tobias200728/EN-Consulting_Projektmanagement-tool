@@ -1,37 +1,88 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Animated, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, Animated } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Sidebar from './Sidebar';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
+import { styles } from '../style/Layout.styles';
 
 export default function Layout({ children }) {
   const [open, setOpen] = useState(false);
-  const slideAnim = useRef(new Animated.Value(-250)).current;
+  const slideAnim = useRef(new Animated.Value(-250)).current; // Komplett versteckt
+  const navigation = useNavigation();
+  const route = useRoute();
+
+  const menuItems = [
+    { icon: "📊", screen: "Dashboard", label: "Dashboard" },
+    { icon: "🚧", screen: "Projects", label: "Projects" },
+    { icon: "📅", screen: "Calendar", label: "Calendar" },
+    { icon: "📄", screen: "Documents", label: "Documents" },
+  ];
 
   const toggleMenu = () => {
     setOpen(!open);
     Animated.timing(slideAnim, {
-      toValue: open ? -250 : 0,
-      duration: 250,
+      toValue: open ? -250 : 70, // -250 = versteckt, 70 = sichtbar (neben Icon-Bar)
+      duration: 300,
       useNativeDriver: false,
     }).start();
   };
 
+  const handleIconPress = (screen) => {
+    navigation.navigate(screen);
+  };
+
   return (
     <View style={styles.container}>
-      {/* Sidebar */}
+      {/* Icon Bar - Always Visible */}
+      <View style={styles.iconBar}>
+        {/* Burger Menu Button */}
+        <TouchableOpacity style={styles.burgerButton} onPress={toggleMenu}>
+          <Text style={styles.burgerIcon}>☰</Text>
+        </TouchableOpacity>
+
+        {/* Navigation Icons */}
+        {menuItems.map((item, index) => {
+          const isActive = route.name === item.screen;
+          return (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.iconBarItem,
+                isActive && styles.iconBarItemActive
+              ]}
+              onPress={() => handleIconPress(item.screen)}
+            >
+              <Text style={styles.iconBarIcon}>{item.icon}</Text>
+            </TouchableOpacity>
+          );
+        })}
+
+        {/* Spacer to push avatar to bottom */}
+        <View style={{ flex: 1 }} />
+
+        {/* User Avatar at Bottom */}
+        <View style={styles.userAvatarContainer}>
+          <View style={styles.userAvatar}>
+            <Text style={styles.userAvatarText}>👤</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Sidebar - Hidden by default, slides in when open */}
       <Animated.View style={[styles.sidebar, { left: slideAnim }]}>
         <Sidebar onPress={toggleMenu} />
       </Animated.View>
 
-      {/* Overlay */}
-      {open && <TouchableOpacity style={styles.overlay} onPress={toggleMenu} />}
+      {/* Overlay - Only visible when sidebar is open */}
+      {open && (
+        <TouchableOpacity 
+          style={styles.overlay} 
+          onPress={toggleMenu}
+          activeOpacity={1}
+        />
+      )}
 
       {/* Topbar */}
       <View style={styles.topbar}>
-        <TouchableOpacity onPress={toggleMenu}>
-          <Text style={styles.burger}>☰</Text>
-        </TouchableOpacity>
         <Text style={styles.title}>EN-Consulting</Text>
       </View>
 
@@ -40,47 +91,3 @@ export default function Layout({ children }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-
-  sidebar: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 250,
-    zIndex: 10,
-  },
-
-  overlay: {
-    position: 'absolute',
-    width: SCREEN_WIDTH,
-    height: '100%',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    zIndex: 5,
-  },
-
-  topbar: {
-    height: 60,
-    backgroundColor: '#0a0f33',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  burger: {
-    fontSize: 28,
-    color: 'white',
-  },
-  title: {
-    marginLeft: 15,
-    fontSize: 18,
-    fontWeight: '600',
-    color: 'white',
-  },
-
-  content: {
-    flex: 1,
-    backgroundColor: 'white',
-    padding: 15,
-  },
-});

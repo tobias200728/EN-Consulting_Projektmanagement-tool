@@ -12,7 +12,7 @@ const handleLogin = async () => {
     formData.append("username", username);
     formData.append("password", password);
 
-    const res = await fetch("http://192.168.50.145:8000/login", {  //Coban: 192.168.50.145,  127.0.0.1, 
+    const res = await fetch("http://127.0.0.1:8000/login", {  //Coban: 192.168.50.145,  127.0.0.1, 
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded"
