@@ -8,60 +8,91 @@ export const styles = StyleSheet.create({
     backgroundColor: '#f5f5f7',
   },
   
-  // Icon Bar - Always Visible
-  iconBar: {
+  // Animated Sidebar
+  sidebar: {
     position: 'absolute',
     top: 0,
     bottom: 0,
     left: 0,
-    width: 70,
-    backgroundColor: '#1a2332',
-    zIndex: 30, // Höchster z-index
-    paddingTop: 0,
-    paddingBottom: 20,
+    backgroundColor: '#0a0f33',
+    zIndex: 30,
     borderRightWidth: 1,
     borderRightColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+    flexDirection: 'column',
+    justifyContent: 'space-between', // This pushes content apart
   },
 
   // Burger Menu Button
   burgerButton: {
-    width: 70,
     height: 70,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#0a0f33',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.1)',
+    paddingLeft: 10, // Align burger icon to left when open
   },
   burgerIcon: {
     fontSize: 24,
     color: 'white',
   },
 
-  // Navigation Icons
-  iconBarItem: {
+  // Menu Container
+  menuContainer: {
+    paddingTop: 20,
+  },
+
+  // Sidebar Items
+  sidebarItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 50,
+    marginVertical: 5,
+    marginHorizontal: 10,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  sidebarItemActive: {
+    backgroundColor: '#2b5fff',
+  },
+
+  // Icon Container (fixed width)
+  iconContainer: {
     width: 50,
     height: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 15,
-    marginHorizontal: 10,
-    borderRadius: 12,
   },
-  iconBarItemActive: {
-    backgroundColor: '#2b5fff',
-  },
-  iconBarIcon: {
+  sidebarIcon: {
     fontSize: 24,
   },
 
-  // User Avatar Container
-  userAvatarContainer: {
-    width: 70,
-    paddingVertical: 15,
+  // Text Container (animated width)
+  textContainer: {
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  sidebarText: {
+    fontSize: 15,
+    color: 'white',
+    fontWeight: '500',
+  },
+
+  // User Section at Bottom
+  userSection: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 10,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.1)',
+  },
+  userAvatarContainer: {
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   userAvatar: {
     width: 45,
@@ -75,30 +106,31 @@ export const styles = StyleSheet.create({
     fontSize: 24,
   },
 
-  // Sidebar - Hidden by default (left: -250)
-  sidebar: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: -250, // Komplett versteckt (startet links außerhalb)
-    width: 250,
-    zIndex: 20, // Über Content, unter Icon-Bar
-    shadowColor: '#000',
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 10,
+  // User Info Container (animated)
+  userInfoContainer: {
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  userName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'white',
+  },
+  userRole: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: 2,
   },
 
-  // Overlay - Covers content when sidebar is open
+  // Overlay
   overlay: {
     position: 'absolute',
-    left: 70, // Startet nach Icon-Bar
+    left: 0, // Start from 0 to cover everything
     right: 0,
     top: 0,
     bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    zIndex: 15, // Über Content, unter Sidebar und Icon-Bar
+    zIndex: 25, // Below sidebar (30) but above content
   },
 
   // Topbar
@@ -108,7 +140,6 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingLeft: 90, // Space for icon bar
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.1)',
     zIndex: 1,
@@ -123,7 +154,6 @@ export const styles = StyleSheet.create({
   content: {
     flex: 1,
     backgroundColor: '#f5f5f7',
-    marginLeft: 70, // Space for icon bar
-    marginTop: 70, // Space for topbar
+    marginTop: 70,
   },
 });
