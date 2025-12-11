@@ -11,10 +11,16 @@ export default function ForgotPassword({ navigation }) {
 
   // Schritt 1: Email eingeben und Code anfordern
   const handleRequestCode = async () => {
-    if (!email) {
-      Alert.alert("Fehler", "Bitte Email eingeben");
-      return;
-    }
+    console.log("=== handleRequestCode aufgerufen ===");
+  console.log("Email Wert:", email);
+  console.log("Email Länge:", email.length);
+  console.log("Email ist leer?", !email);
+  
+  if (!email || email.trim() === "") {
+    console.log("❌ FEHLER: Keine Email eingegeben!");
+    Alert.alert("Fehler", "Bitte Email eingeben");
+    return;
+  }
 
     setLoading(true);
     try {
@@ -30,9 +36,11 @@ export default function ForgotPassword({ navigation }) {
 
       if (res.ok) {
         Alert.alert("Erfolg", "Ein Verification Code wurde an deine Email gesendet");
+        console.log("asdf")
         setStep(2);
       } else {
         Alert.alert("Fehler", data.detail || "Etwas ist schief gelaufen");
+        console.log("fdas")
       }
     } catch (error) {
       Alert.alert("Fehler", "Verbindung zum Server fehlgeschlagen");

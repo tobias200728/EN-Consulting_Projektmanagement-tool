@@ -1,11 +1,62 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import AwesomeAlert from 'react-native-awesome-alerts';
 
 const Login = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertType, setAlertType] = useState('error'); // 'error' oder 'success'
+
+  const showError = (title, message) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertType('error');
+    setShowAlert(true);
+  };
+
+  const showSuccess = (title, message) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertType('success');
+    setShowAlert(true);
+  };
+
+  const showInfo = (title, message) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertType('info');
+    setShowAlert(true);
+  };
 
   const handleLogin = async () => {
+    // Email-Feld prüfen
+    if (!email || email.trim() === '') {
+      showInfo('Info', 'Bitte Email-Adresse eingeben');
+      console.log("email eingeben")
+      return;
+    }
+
+    // Passwort-Feld prüfen
+    if (!password || password.trim() === '') {
+      showInfo('Info', 'Bitte Passwort eingeben');
+      console.log("passwort eingeben")
+      return;
+    }
+    
+    // // Email-Format prüfen (optional, aber empfohlen)
+    // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // if (!emailRegex.test(email.trim())) {
+    //   toast.error('Bitte gültige email eingeben');
+    //   console.log("gültige email eingeben")
+    //   return;
+    // }
+
+    setLoading(true);
+
     try {
       const formData = new URLSearchParams();
       formData.append("email", email);
@@ -22,10 +73,20 @@ const Login = ({ navigation }) => {
       const data = await res.json();
       console.log("Login response:", data);
 
-      if (data.status === "2fa_required") {
-        navigation.navigate("TwoFA", { email: data.email, user_id: data.user_id });
-      } else if (data.status === "ok") {
-        navigation.navigate("Dashboard");
+      // if (data.status === "2fa_required") {
+      //   navigation.navigate("TwoFA", { email: data.email, user_id: data.user_id });
+      // } else if (data.status === "ok") {
+      //   navigation.navigate("Dashboard");
+      // }
+
+      if (res.ok) {
+        if (data.status === "2fa_required") {
+          navigation.navigate("TwoFA", { email: data.email, user_id: data.user_id });
+        } else if (data.status === "ok") {
+          navigation.navigate("Dashboard");
+        }
+      } else {
+        showError('Login fehlgeschlagen!', data.detail || 'Ungültige Email oder Passwort');
       }
 
     } catch (error) {
@@ -68,6 +129,28 @@ const Login = ({ navigation }) => {
           <Text style={styles.buttonText}>Anmelden</Text>
         </TouchableOpacity>
       </View>
+
+      <AwesomeAlert
+        show={showAlert}
+        showProgress={false}
+        title={alertTitle}
+        message={alertMessage}
+        closeOnTouchOutside={true}
+        closeOnHardwareBackPress={false}
+        showConfirmButton={true}
+        confirmText="OK"
+        confirmButtonColor={
+          alertType === 'error' ? '#dc3545' : 
+          alertType === 'success' ? '#28a745' : 
+          '#2b5fff'  // Info = Blau
+        }
+        onConfirmPressed={() => setShowAlert(false)}
+        titleStyle={styles.alertTitle}
+        messageStyle={styles.alertMessage}
+        contentContainerStyle={styles.alertContainer}
+        confirmButtonStyle={styles.alertButton}
+        confirmButtonTextStyle={styles.alertButtonText}
+      />
     </View>
   );
 }
