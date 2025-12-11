@@ -1,52 +1,52 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, CheckBox } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 
 const Login = ({ navigation }) => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
 
-const handleLogin = async () => {
-  try {
-    const formData = new URLSearchParams();
-    formData.append("username", username);
-    formData.append("password", password);
+  const handleLogin = async () => {
+    try {
+      const formData = new URLSearchParams();
+      formData.append("email", email);
+      formData.append("password", password);
 
-    const res = await fetch("http://127.0.0.1:8000/login", {  //Coban: 192.168.50.145,  127.0.0.1, 
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body: formData.toString(),
-    });
+      const res = await fetch("http://127.0.0.1:8000/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: formData.toString(),
+      });
 
-    const data = await res.json();
-    console.log("Login response:", data);
+      const data = await res.json();
+      console.log("Login response:", data);
 
-    if (data.status === "2fa_required") {
-      navigation.navigate("TwoFA", { username: data.username, user_id: data.user_id });
-    } else if (data.status === "ok") {
-      navigation.navigate("Dashboard");
+      if (data.status === "2fa_required") {
+        navigation.navigate("TwoFA", { email: data.email, user_id: data.user_id });
+      } else if (data.status === "ok") {
+        navigation.navigate("Dashboard");
+      }
+
+    } catch (error) {
+      console.log("Network error:", error);
     }
-
-  } catch (error) {
-    console.log("Network error:", error);
-  }
-};
-
-
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.loginBox}>
         <Text style={styles.title}>EN-Consulting</Text>
+        <Text style={styles.subtitle}>Project Management Tool</Text>
 
-        <Text style={styles.label}>Name</Text>
+        <Text style={styles.label}>Email</Text>
         <TextInput
           style={styles.input}
-          placeholder="Benutzername"
-          value={username}
-          onChangeText={setUsername}
+          placeholder="deine@email.com"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
         />
 
         <Text style={styles.label}>Passwort</Text>
@@ -59,12 +59,8 @@ const handleLogin = async () => {
         />
 
         <View style={styles.row}>
-          {/* <View style={styles.rememberMe}> */}
-            {/* <CheckBox value={rememberMe} onValueChange={setRememberMe} /> */}
-            {/* <Text style={styles.rememberText}>Remember me</Text> */}
-          {/* </View> */}
-          <TouchableOpacity>
-            <Text style={styles.forgot}>Forgot password?</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")}>
+            <Text style={styles.forgot}>Passwort vergessen?</Text>
           </TouchableOpacity>
         </View>
 
@@ -96,9 +92,10 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   title: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '600',
     textAlign: 'center',
+    marginBottom: 5,
   },
   subtitle: {
     fontSize: 14,
@@ -120,19 +117,13 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     marginVertical: 10,
   },
-  rememberMe: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  rememberText: {
-    marginLeft: 5,
-  },
   forgot: {
     color: '#2b5fff',
+    fontSize: 14,
   },
   button: {
     backgroundColor: '#2b5fff',
@@ -145,12 +136,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
-  demo: {
-    textAlign: 'center',
-    color: '#777',
-    fontSize: 12,
-    marginTop: 10,
-  },
 });
 
-export default Login
+export default Login;

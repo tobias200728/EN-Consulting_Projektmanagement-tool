@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import List, Annotated, Optional
 import models
 from database import engine, SessionLocal, Base
@@ -12,20 +12,23 @@ from fastapi import Form
 import qrcode
 from fastapi.responses import StreamingResponse
 from io import BytesIO
+import secrets
+import time
+import random
+import string
 
 
 app = FastAPI()
 
 
 origins = [
-    "http://localhost:8081",  # React Native Expo
+    "http://localhost:8081",
     "http://127.0.0.1:8081",
-    
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # oder ["*"] während Dev
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -34,32 +37,56 @@ app.add_middleware(
 
 models.Base.metadata.create_all(bind=engine)
 
-#pw hashen
+# Password hashen
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
-#2FA 
-#(TOTP - Time Based One Time Password)
+# 2FA (TOTP - Time Based One Time Password)
 def generate_2fa_secret() -> str:
-    #erstellt neues TOTP-Secret für Microsoft Authenticator handy app
     return pyotp.random_base32()
 
-def build_otpauth_url(secret: str, username: str, issuer: str = "ENConsultingApp") -> str:
-    # Baut otpauth:// URL, die Microsoft Authenticator verstehen sollte
-    # Beispiel:
-    # otpauth://totp/ENConsultingApp:tobi?secret=ABC&issuer=ENConsultingApp&digits=6
-    label = f"{issuer}:{username}"
+
+def build_otpauth_url(secret: str, email: str, issuer: str = "ENConsultingApp") -> str:
+    label = f"{issuer}:{email}"
     return (
         f"otpauth://totp/{quote(label)}"
         f"?secret={secret}&issuer={quote(issuer)}&digits=6"
     )
 
 
+def generate_reset_code() -> str:
+    """Generiert einen 6-stelligen Verification Code"""
+    return ''.join(random.choices(string.digits, k=6))
+
+
+def send_reset_code_email(email: str, code: str):
+    """
+    Sendet Verification Code per Email
+    WICHTIG: Für Production musst du einen echten Email-Service einbinden
+    Für Development zeigen wir den Code in der Console
+    """
+    print(f"\n{'='*60}")
+    print(f"PASSWORD RESET CODE für {email}")
+    print(f"Code: {code}")
+    print(f"Gültig für 15 Minuten")
+    print(f"{'='*60}\n")
+    
+    # TODO: Für Production - Echte Email versenden
+    # import smtplib
+    # from email.mime.text import MIMEText
+    # msg = MIMEText(f"Dein Passwort Reset Code: {code}")
+    # msg['Subject'] = 'Passwort zurücksetzen - EN-Consulting'
+    # msg['From'] = 'noreply@en-consulting.com'
+    # msg['To'] = email
+    # ...
+
+
+# Pydantic Models
 class UserData(BaseModel):
     isadmin: bool = False
-    username: str
+    email: EmailStr
     password: str
-    
+
 
 class Rooms(BaseModel):
     roomname: str
@@ -67,7 +94,7 @@ class Rooms(BaseModel):
 
 
 class TwoFASetupRequest(BaseModel):
-    username: str
+    email: EmailStr
 
 
 class TwoFASetupResponse(BaseModel):
@@ -75,13 +102,28 @@ class TwoFASetupResponse(BaseModel):
 
 
 class TwoFAVerifyRequest(BaseModel):
-    username: str
+    email: EmailStr
     code: str
 
 
 class TwoFALoginRequest(BaseModel):
-    username: str
+    email: EmailStr
     code: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class VerifyResetCodeRequest(BaseModel):
+    email: EmailStr
+    code: str
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str
+    new_password: str
 
 
 def get_db():
@@ -92,23 +134,22 @@ def get_db():
         db.close()
 
 
-
-
+# ==================== USER MANAGEMENT ====================
 
 @app.post("/adduser/")
-async def create_user(userdata: UserData,  db: Session = Depends(get_db)):
+async def create_user(userdata: UserData, db: Session = Depends(get_db)):
     try:
-        # Prüfen, ob der Benutzername schon existiert
-        existing_user = db.query(models.Users).filter(models.Users.username == userdata.username).first()
+        # Prüfen, ob Email schon existiert
+        existing_user = db.query(models.Users).filter(models.Users.email == userdata.email).first()
         if existing_user:
-            raise HTTPException(status_code=400, detail="Username already exists")
+            raise HTTPException(status_code=400, detail="Email already exists")
         
         # Passwort hashen
         hashed_password = pwd_context.hash(userdata.password)
         
         # User erstellen
         db_user = models.Users(
-            username=userdata.username,
+            email=userdata.email,
             password=hashed_password,
             isadmin=userdata.isadmin
         )
@@ -116,44 +157,50 @@ async def create_user(userdata: UserData,  db: Session = Depends(get_db)):
         db.commit()
         db.refresh(db_user)
         
-        return {"id": db_user.id, "username": db_user.username, "isadmin": db_user.isadmin}
+        return {
+            "id": db_user.id,
+            "email": db_user.email,
+            "isadmin": db_user.isadmin
+        }
     except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/getuserbyID/{user_id}")
-async def get_user_by_id(user_id : int, db: Session = Depends(get_db)):
+async def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
     result = db.query(models.Users).filter(models.Users.id == user_id).all()
     if not result:
         raise HTTPException(status_code=404, detail="User not found")
     return result
 
 
+# ==================== LOGIN ====================
 
-#new
 @app.post("/login")
 async def login(
-    username: str = Form(...),
+    email: str = Form(...),
     password: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    user = db.query(models.Users).filter(models.Users.username == username).first()
+    user = db.query(models.Users).filter(models.Users.email == email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
     if not pwd_context.verify(password, user.password):
         raise HTTPException(status_code=400, detail="Incorrect password")
     
     if user.twofa_enabled:
         return {
             "status": "2fa_required",
-            "username": user.username,
+            "email": user.email,
             "user_id": user.id,
             "isadmin": user.isadmin,
         }
     else:
         return {
             "status": "ok",
-            "message": "Login successful (no 2FA enabled)",
+            "message": "Login successful",
             "user_id": user.id,
             "isadmin": user.isadmin,
         }
@@ -161,24 +208,15 @@ async def login(
 
 @app.post("/login/2fa")
 async def login_2fa(data: TwoFALoginRequest, db: Session = Depends(get_db)):
-    # Dann weiter mit Login Schritt 2: 2FA-Code prüfen
-    # Wird nur verwendet, wenn zuvor /login status=2fa_required geliefert hat
-    user = (
-        db.query(models.Users)
-        .filter(models.Users.username == data.username)
-        .first()
-    )
+    user = db.query(models.Users).filter(models.Users.email == data.email).first()
 
     if not user or not user.twofa_enabled or not user.twofa_secret:
-        raise HTTPException(
-            status_code=400, detail="2FA not enabled for this user"
-        )
+        raise HTTPException(status_code=400, detail="2FA not enabled for this user")
 
     totp = pyotp.TOTP(user.twofa_secret)
     if not totp.verify(data.code):
         raise HTTPException(status_code=401, detail="Invalid 2FA code")
 
-    # Hier könnte später ein JWT erzeugt werden JWT = (Justiz Wartungs terminal)
     return {
         "status": "ok",
         "message": "Login with 2FA successful",
@@ -186,40 +224,29 @@ async def login_2fa(data: TwoFALoginRequest, db: Session = Depends(get_db)):
         "isadmin": user.isadmin,
     }
 
+
+# ==================== 2FA SETUP ====================
+
 @app.post("/2fa/setup", response_model=TwoFASetupResponse)
 async def setup_2fa(data: TwoFASetupRequest, db: Session = Depends(get_db)):
-    # da startest du das 2FA-Setup:
-    # - generiert ein neues Secret
-    # - speichert es beim User
-    # - gibt eine otpauth-URL zurück (für Microsoft Authenticator)
-    user = (
-        db.query(models.Users)
-        .filter(models.Users.username == data.username)
-        .first()
-    )
+    user = db.query(models.Users).filter(models.Users.email == data.email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
     # Neues Secret erzeugen
     secret = generate_2fa_secret()
     user.twofa_secret = secret
-    user.twofa_enabled = True  # setzt Datenbank Value auf true um 2FA pop up fenster zu öffnen
+    user.twofa_enabled = True
     db.commit()
 
-    otpauth_url = build_otpauth_url(secret, user.username, issuer="ENConsultingApp")
+    otpauth_url = build_otpauth_url(secret, user.email, issuer="ENConsultingApp")
 
     return TwoFASetupResponse(otpauth_url=otpauth_url)
 
+
 @app.post("/2fa/verify-setup")
 async def verify_2fa_setup(data: TwoFAVerifyRequest, db: Session = Depends(get_db)):
-    # da das 2FA-Setup bestätigen:
-    # - User gibt den Code aus der App ein
-    # - wenn passt → twofa_enabled = True - sonst shit happens
-    user = (
-        db.query(models.Users)
-        .filter(models.Users.username == data.username)
-        .first()
-    )
+    user = db.query(models.Users).filter(models.Users.email == data.email).first()
     if not user or not user.twofa_secret:
         raise HTTPException(
             status_code=404,
@@ -236,19 +263,131 @@ async def verify_2fa_setup(data: TwoFAVerifyRequest, db: Session = Depends(get_d
     return {"status": "ok", "message": "2FA successfully enabled"}
 
 
-@app.get("/2fa/qr/{username}")
-async def get_2fa_qr(username: str, db: Session = Depends(get_db)):
-    user = db.query(models.Users).filter(models.Users.username == username).first()
+@app.get("/2fa/qr/{email}")
+async def get_2fa_qr(email: str, db: Session = Depends(get_db)):
+    user = db.query(models.Users).filter(models.Users.email == email).first()
     if not user or not user.twofa_secret:
         raise HTTPException(status_code=404, detail="User not found or 2FA not initialized")
 
-    # otpauth URL erstellen
-    otpauth_url = f"otpauth://totp/ENConsultingApp:{user.username}?secret={user.twofa_secret}&issuer=ENConsultingApp&digits=6"
+    otpauth_url = f"otpauth://totp/ENConsultingApp:{user.email}?secret={user.twofa_secret}&issuer=ENConsultingApp&digits=6"
 
-    # QR Code generieren
     img = qrcode.make(otpauth_url)
     buf = BytesIO()
     img.save(buf, format="PNG")
     buf.seek(0)
 
     return StreamingResponse(buf, media_type="image/png")
+
+
+# ==================== PASSWORD RESET ====================
+
+@app.post("/forgot-password")
+async def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Schritt 1: User gibt Email ein
+    System generiert 6-stelligen Code und sendet ihn per Email
+    """
+    print(f"DEBUG: Forgot password request for email: {data.email}")  # NEU
+    
+    user = db.query(models.Users).filter(models.Users.email == data.email).first()
+    
+    if not user:
+        print(f"DEBUG: User with email {data.email} NOT FOUND in database!")  # NEU
+        # Aus Sicherheitsgründen: Nicht verraten, ob Email existiert
+        return {
+            "status": "ok",
+            "message": "If this email exists, a reset code has been sent"
+        }
+    
+    print(f"DEBUG: User found! Generating code...")  # NEU
+    
+    # Generiere 6-stelligen Code
+    reset_code = generate_reset_code()
+    
+    print(f"DEBUG: Generated code: {reset_code}")  # NEU
+    
+    # Speichere Code mit Ablaufzeit (15 Minuten)
+    user.reset_code = reset_code
+    user.reset_code_expires = int(time.time()) + 900
+    db.commit()
+    
+    print(f"DEBUG: Calling send_reset_code_email...")  # NEU
+    
+    # Sende Email (Development: Console Output)
+    send_reset_code_email(user.email, reset_code)
+    
+    return {
+        "status": "ok",
+        "message": "Reset code has been sent to your email"
+    }
+
+
+@app.post("/verify-reset-code")
+async def verify_reset_code(data: VerifyResetCodeRequest, db: Session = Depends(get_db)):
+    """
+    Schritt 2: User gibt den erhaltenen Code ein
+    System prüft, ob Code korrekt und noch gültig ist
+    """
+    user = db.query(models.Users).filter(models.Users.email == data.email).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not user.reset_code:
+        raise HTTPException(status_code=400, detail="No reset code requested")
+    
+    # Prüfe ob Code abgelaufen ist
+    if user.reset_code_expires < int(time.time()):
+        user.reset_code = None
+        user.reset_code_expires = None
+        db.commit()
+        raise HTTPException(status_code=400, detail="Reset code has expired")
+    
+    # Prüfe ob Code korrekt ist
+    if user.reset_code != data.code:
+        raise HTTPException(status_code=400, detail="Invalid reset code")
+    
+    return {
+        "status": "ok",
+        "message": "Code verified successfully"
+    }
+
+
+@app.post("/reset-password")
+async def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Schritt 3: User gibt neues Passwort ein
+    System prüft Code nochmal und setzt neues Passwort
+    """
+    user = db.query(models.Users).filter(models.Users.email == data.email).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not user.reset_code:
+        raise HTTPException(status_code=400, detail="No reset code requested")
+    
+    # Prüfe ob Code abgelaufen ist
+    if user.reset_code_expires < int(time.time()):
+        user.reset_code = None
+        user.reset_code_expires = None
+        db.commit()
+        raise HTTPException(status_code=400, detail="Reset code has expired")
+    
+    # Prüfe ob Code korrekt ist
+    if user.reset_code != data.code:
+        raise HTTPException(status_code=400, detail="Invalid reset code")
+    
+    # Setze neues Passwort
+    user.password = pwd_context.hash(data.new_password)
+    
+    # Lösche Reset Code
+    user.reset_code = None
+    user.reset_code_expires = None
+    
+    db.commit()
+    
+    return {
+        "status": "ok",
+        "message": "Password has been reset successfully"
+    }

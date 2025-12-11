@@ -5,13 +5,17 @@ class Users(Base):
     __tablename__ = 'users'
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
     password = Column(String, nullable=False)
     isadmin = Column(Boolean, default=False)
 
   
     twofa_enabled = Column(Boolean, default=False)
     twofa_secret = Column(String, nullable=True)
+    
+    # Password Reset Code
+    reset_code = Column(String, nullable=True)
+    reset_code_expires = Column(Integer, nullable=True)  # Unix timestamp
 
 
 class Room(Base):

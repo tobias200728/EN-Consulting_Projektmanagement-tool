@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
 
 export default function TwoFA({ route, navigation }) {
-  const { username } = route.params;
+  const { email } = route.params;
   const [code, setCode] = useState("");
 
   const handle2FA = async () => {
@@ -13,7 +13,7 @@ export default function TwoFA({ route, navigation }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username: username,
+          email: email,
           code: code,
         }),
       });
@@ -33,18 +33,28 @@ export default function TwoFA({ route, navigation }) {
     <View style={styles.container}>
       <View style={styles.box}>
         <Text style={styles.title}>2-Faktor Authentifizierung</Text>
-        <Text style={styles.label}>Gib deinen 2FA-Code ein:</Text>
+        <Text style={styles.subtitle}>Gib deinen 2FA-Code ein für:</Text>
+        <Text style={styles.email}>{email}</Text>
 
+        <Text style={styles.label}>Verification Code</Text>
         <TextInput
           style={styles.input}
           keyboardType="numeric"
           maxLength={6}
           value={code}
           onChangeText={setCode}
+          placeholder="000000"
         />
 
         <TouchableOpacity style={styles.button} onPress={handle2FA}>
           <Text style={styles.buttonText}>Bestätigen</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backText}>Zurück zum Login</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -60,25 +70,38 @@ const styles = StyleSheet.create({
   },
   box: {
     width: "90%",
+    maxWidth: 400,
     padding: 25,
     backgroundColor: "#fff",
     borderRadius: 10,
   },
   title: {
     fontSize: 20,
-    marginBottom: 15,
+    marginBottom: 10,
     fontWeight: "600",
     textAlign: "center",
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#777",
+    textAlign: "center",
+  },
+  email: {
+    fontSize: 14,
+    color: "#2b5fff",
+    textAlign: "center",
+    fontWeight: "500",
+    marginBottom: 20,
   },
   label: {
     marginTop: 10,
     fontWeight: "500",
+    marginBottom: 5,
   },
   input: {
     borderWidth: 1,
     borderColor: "#ddd",
     padding: 12,
-    marginTop: 5,
     borderRadius: 8,
     backgroundColor: "#f3f3f3",
     textAlign: "center",
@@ -96,5 +119,13 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  backButton: {
+    marginTop: 15,
+    alignItems: "center",
+  },
+  backText: {
+    color: "#2b5fff",
+    fontSize: 14,
   },
 });
