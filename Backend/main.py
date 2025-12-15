@@ -16,6 +16,7 @@ import secrets
 import time
 import random
 import string
+from email_service import send_password_reset_email
 
 
 app = FastAPI()
@@ -57,28 +58,6 @@ def build_otpauth_url(secret: str, email: str, issuer: str = "ENConsultingApp") 
 def generate_reset_code() -> str:
     """Generiert einen 6-stelligen Verification Code"""
     return ''.join(random.choices(string.digits, k=6))
-
-
-def send_reset_code_email(email: str, code: str):
-    """
-    Sendet Verification Code per Email
-    WICHTIG: Für Production musst du einen echten Email-Service einbinden
-    Für Development zeigen wir den Code in der Console
-    """
-    print(f"\n{'='*60}")
-    print(f"PASSWORD RESET CODE für {email}")
-    print(f"Code: {code}")
-    print(f"Gültig für 15 Minuten")
-    print(f"{'='*60}\n")
-    
-    # TODO: Für Production - Echte Email versenden
-    # import smtplib
-    # from email.mime.text import MIMEText
-    # msg = MIMEText(f"Dein Passwort Reset Code: {code}")
-    # msg['Subject'] = 'Passwort zurücksetzen - EN-Consulting'
-    # msg['From'] = 'noreply@en-consulting.com'
-    # msg['To'] = email
-    # ...
 
 
 # Pydantic Models
@@ -157,11 +136,6 @@ async def create_user(userdata: UserData, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(db_user)
         
-        return {
-            "id": db_user.id,
-            "email": db_user.email,
-            "isadmin": db_user.isadmin
-        }
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
@@ -287,34 +261,39 @@ async def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get
     Schritt 1: User gibt Email ein
     System generiert 6-stelligen Code und sendet ihn per Email
     """
-    print(f"DEBUG: Forgot password request for email: {data.email}")  # NEU
+    print(f"DEBUG: Forgot password request for email: {data.email}")
     
     user = db.query(models.Users).filter(models.Users.email == data.email).first()
     
     if not user:
-        print(f"DEBUG: User with email {data.email} NOT FOUND in database!")  # NEU
+        print(f"DEBUG: User with email {data.email} NOT FOUND in database!")
         # Aus Sicherheitsgründen: Nicht verraten, ob Email existiert
         return {
             "status": "ok",
             "message": "If this email exists, a reset code has been sent"
         }
     
-    print(f"DEBUG: User found! Generating code...")  # NEU
+    print(f"DEBUG: User found! Generating code...")
     
     # Generiere 6-stelligen Code
     reset_code = generate_reset_code()
     
-    print(f"DEBUG: Generated code: {reset_code}")  # NEU
+    print(f"DEBUG: Generated code: {reset_code}")
     
     # Speichere Code mit Ablaufzeit (15 Minuten)
     user.reset_code = reset_code
-    user.reset_code_expires = int(time.time()) + 900
+    user.reset_code_expires = int(time.time()) + 900  # 15 Minuten
     db.commit()
     
-    print(f"DEBUG: Calling send_reset_code_email...")  # NEU
+    print(f"DEBUG: Sending email with Resend...")
     
-    # Sende Email (Development: Console Output)
-    send_reset_code_email(user.email, reset_code)
+    # Sende Email via Resend
+    email_sent = send_password_reset_email(user.email, reset_code)
+    
+    if email_sent:
+        print(f"✅ Password reset email sent successfully to {user.email}")
+    else:
+        print(f"⚠️  Email sending failed, but code is saved in database")
     
     return {
         "status": "ok",
@@ -386,8 +365,3 @@ async def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_d
     user.reset_code_expires = None
     
     db.commit()
-    
-    return {
-        "status": "ok",
-        "message": "Password has been reset successfully"
-    }
