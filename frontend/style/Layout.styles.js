@@ -1,5 +1,6 @@
 import { StyleSheet, Dimensions } from 'react-native';
 
+
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 export const styles = StyleSheet.create({
@@ -36,6 +37,10 @@ export const styles = StyleSheet.create({
   burgerIcon: {
     fontSize: 24,
     color: 'white',
+  },
+
+  dashboardIcon: {
+    color: 'white'
   },
 
   // Menu Container

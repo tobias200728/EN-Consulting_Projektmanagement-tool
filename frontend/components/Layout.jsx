@@ -2,6 +2,8 @@ import React, { useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { styles } from '../style/Layout.styles';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 export default function Layout({ children }) {
   const [open, setOpen] = useState(false);
@@ -10,10 +12,10 @@ export default function Layout({ children }) {
   const route = useRoute();
 
   const menuItems = [
-    { icon: "📊", screen: "Dashboard", label: "Dashboard" },
-    { icon: "🚧", screen: "Projects", label: "Projects" },
-    { icon: "📅", screen: "Calendar", label: "Calendar" },
-    { icon: "📄", screen: "Documents", label: "Documents" },
+    { icon: "view-dashboard-outline", iconFamily: "MaterialCommunityIcons", screen: "Dashboard", label: "Dashboard" },
+    { icon: "hammer-wrench", iconFamily: "MaterialCommunityIcons", screen: "Projects", label: "Projects" },
+    { icon: "calendar-month", iconFamily: "MaterialCommunityIcons", screen: "Calendar", label: "Calendar" },
+    { icon: "document-text-outline", iconFamily: "Ionicons", screen: "Documents", label: "Documents" },
   ];
 
   const toggleMenu = () => {
@@ -34,6 +36,20 @@ export default function Layout({ children }) {
     inputRange: [0, 1],
     outputRange: [70, 250], // 70px (icons only) to 250px (full sidebar)
   });
+
+  const renderIcon = (iconName, iconFamily) => {
+    const color = "white";
+    const iconSize = 24;
+    
+    switch(iconFamily) {
+      case "Ionicons":
+        return <Ionicons name={iconName} size={iconSize} color={color} />;
+      case "MaterialCommunityIcons":
+        return <MaterialCommunityIcons name={iconName} size={iconSize} color={color} />;
+      default:
+        return <MaterialCommunityIcons name={iconName} size={iconSize} color={color} />;
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -62,7 +78,7 @@ export default function Layout({ children }) {
                   onPress={() => handleIconPress(item.screen)}
                 >
                   <View style={styles.iconContainer}>
-                    <Text style={styles.sidebarIcon}>{item.icon}</Text>
+                    {renderIcon(item.icon, item.iconFamily, isActive)}
                   </View>
                   <Animated.View
                     style={[
