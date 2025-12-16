@@ -135,7 +135,7 @@ const Login = ({ navigation }) => {
         showProgress={false}
         title={alertTitle}
         message={alertMessage}
-        closeOnTouchOutside={true}
+        closeOnTouchOutside={false}
         closeOnHardwareBackPress={false}
         showConfirmButton={true}
         confirmText="OK"
@@ -144,6 +144,7 @@ const Login = ({ navigation }) => {
           alertType === 'success' ? '#28a745' : 
           '#2b5fff'  // Info = Blau
         }
+        overlayStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
         onConfirmPressed={() => setShowAlert(false)}
         titleStyle={styles.alertTitle}
         messageStyle={styles.alertMessage}
@@ -217,6 +218,28 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
+    fontWeight: '600',
+  },
+  alertContainer: {
+    borderRadius: 10,
+    padding: 20,
+  },
+  alertTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  alertMessage: {
+    fontSize: 17,
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  alertButton: {
+    paddingHorizontal: 30,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  alertButtonText: {
+    fontSize: 16,
     fontWeight: '600',
   },
 });
