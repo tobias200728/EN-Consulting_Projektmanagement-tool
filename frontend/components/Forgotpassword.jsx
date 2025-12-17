@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import AwesomeAlert from 'react-native-awesome-alerts';
 
 const API_URL = "http://127.0.0.1:8000";
 
@@ -10,6 +11,44 @@ export default function ForgotPassword({ navigation }) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  
+  // Alert States
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertTitle, setAlertTitle] = useState('');
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertType, setAlertType] = useState('error');
+  const [alertAction, setAlertAction] = useState(null);
+
+  const showError = (title, message) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertType('error');
+    setAlertAction(null);
+    setShowAlert(true);
+  };
+
+  const showSuccess = (title, message, action = null) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertType('success');
+    setAlertAction(() => action);
+    setShowAlert(true);
+  };
+
+  const showInfo = (title, message) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertType('info');
+    setAlertAction(null);
+    setShowAlert(true);
+  };
+
+  const handleAlertConfirm = () => {
+    setShowAlert(false);
+    if (alertAction) {
+      alertAction();
+    }
+  };
 
   // Schritt 1: Email eingeben und Code anfordern
   const handleRequestCode = async () => {
@@ -17,14 +56,14 @@ export default function ForgotPassword({ navigation }) {
     console.log("Email Wert:", email);
     
     if (!email || email.trim() === "") {
-      Alert.alert("Fehler", "Bitte Email eingeben");
+      showInfo("Info", "Bitte Email eingeben");
       return;
     }
 
     // Email-Format prüfen
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
-      Alert.alert("Fehler", "Bitte gültige Email-Adresse eingeben");
+      showError("Fehler", "Bitte gültige Email-Adresse eingeben");
       return;
     }
 
@@ -45,18 +84,17 @@ export default function ForgotPassword({ navigation }) {
       console.log("Response Data:", data);
 
       if (res.ok) {
-        setStep(2); 
-
-        Alert.alert(
+        setStep(2);
+        showSuccess(
           "Erfolg",
           "Falls diese Email existiert, wurde ein Verification Code gesendet."
         );
       } else {
-        Alert.alert("Fehler", data.detail || "Etwas ist schief gelaufen");
+        showError("Fehler", data.detail || "Etwas ist schief gelaufen");
       }
     } catch (error) {
       console.error("Fetch Error:", error);
-      Alert.alert("Fehler", "Verbindung zum Server fehlgeschlagen. Ist der Server gestartet?");
+      showError("Fehler", "Verbindung zum Server fehlgeschlagen. Ist der Server gestartet?");
     } finally {
       setLoading(false);
     }
@@ -65,7 +103,7 @@ export default function ForgotPassword({ navigation }) {
   // Schritt 2: Code verifizieren
   const handleVerifyCode = async () => {
     if (!code || code.length !== 6) {
-      Alert.alert("Fehler", "Bitte gültigen 6-stelligen Code eingeben");
+      showInfo("Info", "Bitte gültigen 6-stelligen Code eingeben");
       return;
     }
 
@@ -86,16 +124,16 @@ export default function ForgotPassword({ navigation }) {
       console.log("Verify Code Response:", data);
       
       if (res.ok) {
-        Alert.alert(
+        setStep(3);
+        showSuccess(
           "Erfolg", 
-          "Code bestätigt! Bitte neues Passwort eingeben",
-          [{ text: "OK", onPress: () => setStep(3) }]
+          "Code bestätigt! Bitte neues Passwort eingeben"
         );
       } else {
-        Alert.alert("Fehler", data.detail || "Ungültiger Code");
+        showError("Fehler", data.detail || "Ungültiger Code");
       }
     } catch (error) {
-      Alert.alert("Fehler", "Verbindung zum Server fehlgeschlagen");
+      showError("Fehler", "Verbindung zum Server fehlgeschlagen");
       console.error(error);
     } finally {
       setLoading(false);
@@ -105,12 +143,12 @@ export default function ForgotPassword({ navigation }) {
   // Schritt 3: Neues Passwort setzen
   const handleResetPassword = async () => {
     if (!newPassword || newPassword.length < 6) {
-      Alert.alert("Fehler", "Passwort muss mindestens 6 Zeichen lang sein");
+      showInfo("Info", "Passwort muss mindestens 6 Zeichen lang sein");
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert("Fehler", "Passwörter stimmen nicht überein");
+      showError("Fehler", "Passwörter stimmen nicht überein");
       return;
     }
 
@@ -132,15 +170,10 @@ export default function ForgotPassword({ navigation }) {
       console.log("Reset Password Response:", data);
 
       if (res.ok) {
-        Alert.alert(
+        showSuccess(
           "Erfolg! 🎉",
           "Dein Passwort wurde erfolgreich zurückgesetzt. Du kannst dich jetzt mit dem neuen Passwort anmelden.",
-          [
-            {
-              text: "Zum Login",
-              onPress: () => navigation.navigate("Login"),
-            },
-          ]
+          () => navigation.navigate("Login")
         );
       } else {
         let errorMessage = "Passwort konnte nicht zurückgesetzt werden";
@@ -157,10 +190,10 @@ export default function ForgotPassword({ navigation }) {
           }
         }
         
-        Alert.alert("Fehler", errorMessage);
+        showError("Fehler", errorMessage);
       }
     } catch (error) {
-      Alert.alert("Fehler", "Verbindung zum Server fehlgeschlagen");
+      showError("Fehler", "Verbindung zum Server fehlgeschlagen");
       console.error(error);
     } finally {
       setLoading(false);
@@ -290,6 +323,30 @@ export default function ForgotPassword({ navigation }) {
           </>
         )}
       </View>
+
+      {/* AwesomeAlert Dialog */}
+      <AwesomeAlert
+        show={showAlert}
+        showProgress={false}
+        title={alertTitle}
+        message={alertMessage}
+        closeOnTouchOutside={false}
+        closeOnHardwareBackPress={false}
+        showConfirmButton={true}
+        confirmText="OK"
+        confirmButtonColor={
+          alertType === 'error' ? '#dc3545' : 
+          alertType === 'success' ? '#28a745' : 
+          '#2b5fff'
+        }
+        overlayStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+        onConfirmPressed={handleAlertConfirm}
+        titleStyle={styles.alertTitle}
+        messageStyle={styles.alertMessage}
+        contentContainerStyle={styles.alertContainer}
+        confirmButtonStyle={styles.alertButton}
+        confirmButtonTextStyle={styles.alertButtonText}
+      />
     </View>
   );
 }
@@ -369,5 +426,27 @@ const styles = StyleSheet.create({
   backText: {
     color: "#2b5fff",
     fontSize: 14,
+  },
+  alertContainer: {
+    borderRadius: 10,
+    padding: 20,
+  },
+  alertTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  alertMessage: {
+    fontSize: 17,
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  alertButton: {
+    paddingHorizontal: 30,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  alertButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
