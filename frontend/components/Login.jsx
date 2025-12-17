@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import AwesomeAlert from 'react-native-awesome-alerts';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const API_URL = "http://127.0.0.1:8000";
 
 const Login = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -9,7 +12,7 @@ const Login = ({ navigation }) => {
   const [showAlert, setShowAlert] = useState(false);
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
-  const [alertType, setAlertType] = useState('error'); // 'error' oder 'success'
+  const [alertType, setAlertType] = useState('error');
 
   const showError = (title, message) => {
     setAlertTitle(title);
@@ -32,37 +35,44 @@ const Login = ({ navigation }) => {
     setShowAlert(true);
   };
 
+  // User-Daten lokal speichern
+  const saveUserData = async (userData) => {
+    try {
+      await AsyncStorage.setItem('user_id', String(userData.user_id));
+      await AsyncStorage.setItem('user_role', userData.role);
+      await AsyncStorage.setItem('user_email', userData.email || email);
+      if (userData.first_name) {
+        await AsyncStorage.setItem('user_first_name', userData.first_name);
+      }
+      if (userData.last_name) {
+        await AsyncStorage.setItem('user_last_name', userData.last_name);
+      }
+    } catch (error) {
+      console.log("Error saving user data:", error);
+    }
+  };
+
   const handleLogin = async () => {
     // Email-Feld prüfen
     if (!email || email.trim() === '') {
       showInfo('Info', 'Bitte Email-Adresse eingeben');
-      console.log("email eingeben")
       return;
     }
 
     // Passwort-Feld prüfen
     if (!password || password.trim() === '') {
       showInfo('Info', 'Bitte Passwort eingeben');
-      console.log("passwort eingeben")
       return;
     }
-    
-    // // Email-Format prüfen (optional, aber empfohlen)
-    // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    // if (!emailRegex.test(email.trim())) {
-    //   toast.error('Bitte gültige email eingeben');
-    //   console.log("gültige email eingeben")
-    //   return;
-    // }
 
     setLoading(true);
 
     try {
       const formData = new URLSearchParams();
-      formData.append("email", email);
+      formData.append("email", email.trim());
       formData.append("password", password);
 
-      const res = await fetch("http://127.0.0.1:8000/login", {
+      const res = await fetch(`${API_URL}/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded"
@@ -73,16 +83,24 @@ const Login = ({ navigation }) => {
       const data = await res.json();
       console.log("Login response:", data);
 
-      // if (data.status === "2fa_required") {
-      //   navigation.navigate("TwoFA", { email: data.email, user_id: data.user_id });
-      // } else if (data.status === "ok") {
-      //   navigation.navigate("Dashboard");
-      // }
-
       if (res.ok) {
         if (data.status === "2fa_required") {
-          navigation.navigate("TwoFA", { email: data.email, user_id: data.user_id });
+          // 2FA erforderlich
+          navigation.navigate("TwoFA", { 
+            email: data.email, 
+            user_id: data.user_id,
+            role: data.role 
+          });
         } else if (data.status === "ok") {
+          // Login erfolgreich - User-Daten speichern
+          await saveUserData({
+            user_id: data.user_id,
+            role: data.role,
+            email: email,
+            first_name: data.first_name,
+            last_name: data.last_name
+          });
+          
           navigation.navigate("Dashboard");
         }
       } else {
@@ -91,6 +109,9 @@ const Login = ({ navigation }) => {
 
     } catch (error) {
       console.log("Network error:", error);
+      showError('Verbindungsfehler', 'Server nicht erreichbar. Bitte prüfe deine Verbindung.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -108,6 +129,7 @@ const Login = ({ navigation }) => {
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          autoCorrect={false}
         />
 
         <Text style={styles.label}>Passwort</Text>
@@ -125,8 +147,14 @@ const Login = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Anmelden</Text>
+        <TouchableOpacity 
+          style={[styles.button, loading && styles.buttonDisabled]} 
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? "Wird angemeldet..." : "Anmelden"}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -142,7 +170,7 @@ const Login = ({ navigation }) => {
         confirmButtonColor={
           alertType === 'error' ? '#dc3545' : 
           alertType === 'success' ? '#28a745' : 
-          '#2b5fff'  // Info = Blau
+          '#2b5fff'
         }
         overlayStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
         onConfirmPressed={() => setShowAlert(false)}
@@ -215,6 +243,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 10,
     alignItems: 'center',
+  },
+  buttonDisabled: {
+    backgroundColor: '#999',
   },
   buttonText: {
     color: '#fff',

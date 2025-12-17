@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
 
+const API_URL = "http://127.0.0.1:8000";
+
 export default function ForgotPassword({ navigation }) {
   const [step, setStep] = useState(1); // 1: Email, 2: Code, 3: New Password
   const [email, setEmail] = useState("");
@@ -12,39 +14,49 @@ export default function ForgotPassword({ navigation }) {
   // Schritt 1: Email eingeben und Code anfordern
   const handleRequestCode = async () => {
     console.log("=== handleRequestCode aufgerufen ===");
-  console.log("Email Wert:", email);
-  console.log("Email Länge:", email.length);
-  console.log("Email ist leer?", !email);
-  
-  if (!email || email.trim() === "") {
-    console.log("❌ FEHLER: Keine Email eingegeben!");
-    Alert.alert("Fehler", "Bitte Email eingeben");
-    return;
-  }
+    console.log("Email Wert:", email);
+    
+    if (!email || email.trim() === "") {
+      Alert.alert("Fehler", "Bitte Email eingeben");
+      return;
+    }
+
+    // Email-Format prüfen
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      Alert.alert("Fehler", "Bitte gültige Email-Adresse eingeben");
+      return;
+    }
 
     setLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/forgot-password", {
+      console.log("Sende Request an:", `${API_URL}/forgot-password`);
+      
+      const res = await fetch(`${API_URL}/forgot-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim() }),
       });
 
+      console.log("Response Status:", res.status);
       const data = await res.json();
+      console.log("Response Data:", data);
 
       if (res.ok) {
-        Alert.alert("Erfolg", "Ein Verification Code wurde an deine Email gesendet");
-        console.log("asdf")
-        setStep(2);
+        setStep(2); 
+
+        Alert.alert(
+          "Erfolg",
+          "Falls diese Email existiert, wurde ein Verification Code gesendet."
+        );
       } else {
         Alert.alert("Fehler", data.detail || "Etwas ist schief gelaufen");
-        console.log("fdas")
       }
     } catch (error) {
-      Alert.alert("Fehler", "Verbindung zum Server fehlgeschlagen");
-      console.error(error);
+      console.error("Fetch Error:", error);
+      Alert.alert("Fehler", "Verbindung zum Server fehlgeschlagen. Ist der Server gestartet?");
     } finally {
       setLoading(false);
     }
@@ -59,19 +71,26 @@ export default function ForgotPassword({ navigation }) {
 
     setLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/verify-reset-code", {
+      const res = await fetch(`${API_URL}/verify-reset-code`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, code }),
+        body: JSON.stringify({ 
+          email: email.trim(), 
+          code: code 
+        }),
       });
 
       const data = await res.json();
-
+      console.log("Verify Code Response:", data);
+      
       if (res.ok) {
-        Alert.alert("Erfolg", "Code bestätigt! Bitte neues Passwort eingeben");
-        setStep(3);
+        Alert.alert(
+          "Erfolg", 
+          "Code bestätigt! Bitte neues Passwort eingeben",
+          [{ text: "OK", onPress: () => setStep(3) }]
+        );
       } else {
         Alert.alert("Fehler", data.detail || "Ungültiger Code");
       }
@@ -95,39 +114,35 @@ export default function ForgotPassword({ navigation }) {
       return;
     }
 
-    console.log("Resetting password with:", { email, code, newPassword: "***" }); // DEBUG
-
     setLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/reset-password", {
+      const res = await fetch(`${API_URL}/reset-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email,
-          code,
+          email: email.trim(),
+          code: code,
           new_password: newPassword,
         }),
       });
 
       const data = await res.json();
-      console.log("Reset Password Response:", data); // DEBUG
+      console.log("Reset Password Response:", data);
 
       if (res.ok) {
-        // Zeige Erfolgs-Alert VOR der Navigation
         Alert.alert(
           "Erfolg! 🎉",
           "Dein Passwort wurde erfolgreich zurückgesetzt. Du kannst dich jetzt mit dem neuen Passwort anmelden.",
           [
             {
-              text: "OK",
+              text: "Zum Login",
               onPress: () => navigation.navigate("Login"),
             },
           ]
         );
       } else {
-        // Zeige spezifische Fehlermeldung
         let errorMessage = "Passwort konnte nicht zurückgesetzt werden";
         
         if (data.detail) {
@@ -171,6 +186,7 @@ export default function ForgotPassword({ navigation }) {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
             />
 
             <TouchableOpacity

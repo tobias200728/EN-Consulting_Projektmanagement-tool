@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel, EmailStr
-from typing import List, Annotated, Optional
+from typing import List, Optional
 import models
 from database import engine, SessionLocal, Base
 from sqlalchemy.orm import Session
@@ -12,7 +12,6 @@ from fastapi import Form
 import qrcode
 from fastapi.responses import StreamingResponse
 from io import BytesIO
-import secrets
 import time
 import random
 import string
@@ -21,11 +20,6 @@ from email_service import send_password_reset_email
 
 app = FastAPI()
 
-
-origins = [
-    "http://localhost:8081",
-    "http://127.0.0.1:8081",
-]
 
 app.add_middleware(
     CORSMiddleware,
@@ -62,14 +56,9 @@ def generate_reset_code() -> str:
 
 # Pydantic Models
 class UserData(BaseModel):
-    isadmin: bool = False
     email: EmailStr
     password: str
-
-
-class Rooms(BaseModel):
-    roomname: str
-    room_id: int
+    role: str = "employee"
 
 
 class TwoFASetupRequest(BaseModel):
@@ -130,11 +119,13 @@ async def create_user(userdata: UserData, db: Session = Depends(get_db)):
         db_user = models.Users(
             email=userdata.email,
             password=hashed_password,
-            isadmin=userdata.isadmin
+            role=userdata.role
         )
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
+        
+        return {"status": "ok", "message": "User created", "user_id": db_user.id}
         
     except Exception as e:
         db.rollback()
@@ -143,10 +134,17 @@ async def create_user(userdata: UserData, db: Session = Depends(get_db)):
 
 @app.get("/getuserbyID/{user_id}")
 async def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
-    result = db.query(models.Users).filter(models.Users.id == user_id).all()
+    result = db.query(models.Users).filter(models.Users.id == user_id).first()
     if not result:
         raise HTTPException(status_code=404, detail="User not found")
-    return result
+    return {
+        "id": result.id,
+        "email": result.email,
+        "first_name": result.first_name,
+        "last_name": result.last_name,
+        "role": result.role,
+        "is_active": result.is_active
+    }
 
 
 # ==================== LOGIN ====================
@@ -169,14 +167,16 @@ async def login(
             "status": "2fa_required",
             "email": user.email,
             "user_id": user.id,
-            "isadmin": user.isadmin,
+            "role": user.role,
         }
     else:
         return {
             "status": "ok",
             "message": "Login successful",
             "user_id": user.id,
-            "isadmin": user.isadmin,
+            "role": user.role,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
         }
 
 
@@ -195,7 +195,9 @@ async def login_2fa(data: TwoFALoginRequest, db: Session = Depends(get_db)):
         "status": "ok",
         "message": "Login with 2FA successful",
         "user_id": user.id,
-        "isadmin": user.isadmin,
+        "role": user.role,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
     }
 
 
@@ -285,9 +287,9 @@ async def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get
     user.reset_code_expires = int(time.time()) + 900  # 15 Minuten
     db.commit()
     
-    print(f"DEBUG: Sending email with Resend...")
+    print(f"DEBUG: Sending email...")
     
-    # Sende Email via Resend
+    # Sende Email
     email_sent = send_password_reset_email(user.email, reset_code)
     
     if email_sent:
@@ -297,7 +299,7 @@ async def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get
     
     return {
         "status": "ok",
-        "message": "Reset code has been sent to your email"
+        "message": "Reset code has been sent"
     }
 
 
@@ -365,3 +367,15 @@ async def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_d
     user.reset_code_expires = None
     
     db.commit()
+    
+    return {
+        "status": "ok",
+        "message": "Password has been reset successfully"
+    }
+
+
+# ==================== HEALTH CHECK ====================
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "message": "API is running"}

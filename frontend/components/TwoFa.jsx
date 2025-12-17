@@ -1,13 +1,41 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const API_URL = "http://127.0.0.1:8000";
 
 export default function TwoFA({ route, navigation }) {
-  const { email } = route.params;
+  const { email, user_id, role } = route.params;
   const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // User-Daten lokal speichern
+  const saveUserData = async (userData) => {
+    try {
+      await AsyncStorage.setItem('user_id', String(userData.user_id));
+      await AsyncStorage.setItem('user_role', userData.role);
+      await AsyncStorage.setItem('user_email', email);
+      if (userData.first_name) {
+        await AsyncStorage.setItem('user_first_name', userData.first_name);
+      }
+      if (userData.last_name) {
+        await AsyncStorage.setItem('user_last_name', userData.last_name);
+      }
+    } catch (error) {
+      console.log("Error saving user data:", error);
+    }
+  };
 
   const handle2FA = async () => {
+    if (!code || code.length !== 6) {
+      Alert.alert("Fehler", "Bitte gültigen 6-stelligen Code eingeben");
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      const res = await fetch("http://127.0.0.1:8000/login/2fa", {
+      const res = await fetch(`${API_URL}/login/2fa`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -21,11 +49,24 @@ export default function TwoFA({ route, navigation }) {
       const data = await res.json();
       console.log("2FA Login:", data);
 
-      if (data.status === "ok") {
+      if (res.ok && data.status === "ok") {
+        // User-Daten speichern
+        await saveUserData({
+          user_id: data.user_id,
+          role: data.role,
+          first_name: data.first_name,
+          last_name: data.last_name
+        });
+
         navigation.navigate("Dashboard");
+      } else {
+        Alert.alert("Fehler", data.detail || "Ungültiger 2FA-Code");
       }
     } catch (error) {
       console.log("2FA Error:", error);
+      Alert.alert("Fehler", "Verbindung zum Server fehlgeschlagen");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -46,8 +87,14 @@ export default function TwoFA({ route, navigation }) {
           placeholder="000000"
         />
 
-        <TouchableOpacity style={styles.button} onPress={handle2FA}>
-          <Text style={styles.buttonText}>Bestätigen</Text>
+        <TouchableOpacity 
+          style={[styles.button, loading && styles.buttonDisabled]} 
+          onPress={handle2FA}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            {loading ? "Wird geprüft..." : "Bestätigen"}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -114,6 +161,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     marginTop: 20,
     alignItems: "center",
+  },
+  buttonDisabled: {
+    backgroundColor: "#999",
   },
   buttonText: {
     color: "#fff",
