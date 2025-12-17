@@ -31,6 +31,10 @@ export default function Layout({ children }) {
     navigation.navigate(screen);
   };
 
+  const handleProfilePress = () => {
+    navigation.navigate('Profile');
+  };
+
   // Interpolate width for sidebar
   const sidebarWidth = slideAnim.interpolate({
     inputRange: [0, 1],
@@ -100,8 +104,12 @@ export default function Layout({ children }) {
           </View>
         </View>
 
-        {/* User Avatar at Bottom */}
-        <View style={styles.userSection}>
+        {/* User Avatar at Bottom - Now clickable */}
+        <TouchableOpacity 
+          style={styles.userSection}
+          onPress={handleProfilePress}
+          activeOpacity={0.7}
+        >
           <View style={styles.userAvatarContainer}>
             <View style={styles.userAvatar}>
               <Text style={styles.userAvatarText}>👤</Text>
@@ -122,7 +130,7 @@ export default function Layout({ children }) {
             <Text style={styles.userName}>John Engineer</Text>
             <Text style={styles.userRole}>Project Manager</Text>
           </Animated.View>
-        </View>
+        </TouchableOpacity>
       </Animated.View>
 
       {/* Overlay - Only visible when sidebar is open */}

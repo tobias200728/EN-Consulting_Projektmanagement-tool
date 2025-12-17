@@ -171,7 +171,7 @@ export default function ForgotPassword({ navigation }) {
 
       if (res.ok) {
         showSuccess(
-          "Erfolg! 🎉",
+          "Erfolg",
           "Dein Passwort wurde erfolgreich zurückgesetzt. Du kannst dich jetzt mit dem neuen Passwort anmelden.",
           () => navigation.navigate("Login")
         );
@@ -324,7 +324,7 @@ export default function ForgotPassword({ navigation }) {
         )}
       </View>
 
-      {/* AwesomeAlert Dialog */}
+      {/* AwesomeAlert Vorlage */}
       <AwesomeAlert
         show={showAlert}
         showProgress={false}
