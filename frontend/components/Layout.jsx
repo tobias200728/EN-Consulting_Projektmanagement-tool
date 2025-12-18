@@ -127,8 +127,7 @@ export default function Layout({ children }) {
               },
             ]}
           >
-            <Text style={styles.userName}>John Engineer</Text>
-            <Text style={styles.userRole}>Project Manager</Text>
+            <Text style={styles.userName}> User</Text>
           </Animated.View>
         </TouchableOpacity>
       </Animated.View>

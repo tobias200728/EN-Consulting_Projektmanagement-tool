@@ -18,7 +18,25 @@ import string
 from email_service import send_password_reset_email
 
 
-app = FastAPI()
+app = FastAPI(
+    title="EN-Consulting API",
+    description="Project Management Tool API",
+    version="1.0.0",
+    openapi_tags=[
+        {
+            "name": "User Management",
+        },
+        {
+            "name": "Authentication",
+        },
+        {
+            "name": "Two-Factor Authentication",
+        },
+        {
+            "name": "Password Management",
+        },
+    ]
+)
 
 
 app.add_middleware(
@@ -109,7 +127,7 @@ def get_db():
 
 # ==================== USER MANAGEMENT ====================
 
-@app.post("/adduser/")
+@app.post("/adduser/", tags=["User Management"])
 async def create_user(userdata: UserData, db: Session = Depends(get_db)):
     try:
         # Prüfen, ob Email schon existiert
@@ -137,11 +155,11 @@ async def create_user(userdata: UserData, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/getuserbyID/{user_id}")
+@app.get("/getuserbyID/{user_id}", tags=["User Management"])
 async def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
     result = db.query(models.Users).filter(models.Users.id == user_id).first()
     if not result:
-        raise HTTPException(status_code=404, detail="Profil nicht gefunden")
+        raise HTTPException(status_code=404, detail="User not found")
     return {
         "id": result.id,
         "email": result.email,
@@ -151,33 +169,34 @@ async def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
         "is_active": result.is_active
     }
 
-@app.delete("/deleteuser/{user_id}")
+
+@app.delete("/deleteuser/{user_id}", tags=["User Management"])
 async def delete_user(user_id: int, db: Session = Depends(get_db)):
     """
     Löscht einen User aus der Datenbank
     """
     user = db.query(models.Users).filter(models.Users.id == user_id).first()
-
+    
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-
+    
     try:
         db.delete(user)
         db.commit()
-
+        
         return {
             "status": "ok",
             "message": f"User {user.email} successfully deleted",
             "user_id": user_id
         }
-
+        
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error deleting user: {str(e)}")
 
 # ==================== LOGIN ====================
 
-@app.post("/login")
+@app.post("/login", tags=["Authentication"])
 async def login(
     email: str = Form(...),
     password: str = Form(...),
@@ -185,10 +204,10 @@ async def login(
 ):
     user = db.query(models.Users).filter(models.Users.email == email).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Profil nicht gefunden")
+        raise HTTPException(status_code=404, detail="User not found")
     
     if not pwd_context.verify(password, user.password):
-        raise HTTPException(status_code=400, detail="Falsches Passwort")
+        raise HTTPException(status_code=400, detail="Incorrect password")
     
     if user.twofa_enabled:
         return {
@@ -208,7 +227,7 @@ async def login(
         }
 
 
-@app.post("/login/2fa")
+@app.post("/login/2fa", tags=["Authentication"])
 async def login_2fa(data: TwoFALoginRequest, db: Session = Depends(get_db)):
     user = db.query(models.Users).filter(models.Users.email == data.email).first()
 
@@ -231,11 +250,11 @@ async def login_2fa(data: TwoFALoginRequest, db: Session = Depends(get_db)):
 
 # ==================== 2FA SETUP ====================
 
-@app.post("/2fa/setup", response_model=TwoFASetupResponse)
+@app.post("/2fa/setup", response_model=TwoFASetupResponse, tags=["Two-Factor Authentication"])
 async def setup_2fa(data: TwoFASetupRequest, db: Session = Depends(get_db)):
     user = db.query(models.Users).filter(models.Users.email == data.email).first()
     if not user:
-        raise HTTPException(status_code=404, detail="Profil nicht gefunden")
+        raise HTTPException(status_code=404, detail="User not found")
 
     # Neues Secret erzeugen
     secret = generate_2fa_secret()
@@ -247,11 +266,14 @@ async def setup_2fa(data: TwoFASetupRequest, db: Session = Depends(get_db)):
 
     return TwoFASetupResponse(otpauth_url=otpauth_url)
 
-@app.get("/2fa/qr/{email}")
+
+
+
+@app.get("/2fa/qr/{email}", tags=["Two-Factor Authentication"])
 async def get_2fa_qr(email: str, db: Session = Depends(get_db)):
     user = db.query(models.Users).filter(models.Users.email == email).first()
     if not user or not user.twofa_secret:
-        raise HTTPException(status_code=404, detail="Profil nicht gefunden oder 2FA nicht aktiviert")
+        raise HTTPException(status_code=404, detail="User not found or 2FA not initialized")
 
     otpauth_url = f"otpauth://totp/ENConsultingApp:{user.email}?secret={user.twofa_secret}&issuer=ENConsultingApp&digits=6"
 
@@ -262,19 +284,20 @@ async def get_2fa_qr(email: str, db: Session = Depends(get_db)):
 
     return StreamingResponse(buf, media_type="image/png")
 
-@app.get("/2fa/status/{email}")
+
+@app.get("/2fa/status/{email}", tags=["Two-Factor Authentication"])
 async def check_2fa_status(email: str, db: Session = Depends(get_db)):
     """
     Prüft ob 2FA für einen User aktiviert ist
     """
     user = db.query(models.Users).filter(models.Users.email == email).first()
-
+    
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-
+    
     # 2FA ist aktiv wenn twofa_secret befüllt ist
     is_2fa_active = user.twofa_secret is not None and user.twofa_secret != ""
-
+    
     return {
         "status": "ok",
         "email": user.email,
@@ -284,7 +307,7 @@ async def check_2fa_status(email: str, db: Session = Depends(get_db)):
 
 # ==================== PASSWORD RESET ====================
 
-@app.post("/forgot-password")
+@app.post("/forgot-password", tags=["Password Management"])
 async def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
     """
     Schritt 1: User gibt Email ein
@@ -330,7 +353,7 @@ async def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get
     }
 
 
-@app.post("/verify-reset-code")
+@app.post("/verify-reset-code", tags=["Password Management"])
 async def verify_reset_code(data: VerifyResetCodeRequest, db: Session = Depends(get_db)):
     """
     Schritt 2: User gibt den erhaltenen Code ein
@@ -339,7 +362,7 @@ async def verify_reset_code(data: VerifyResetCodeRequest, db: Session = Depends(
     user = db.query(models.Users).filter(models.Users.email == data.email).first()
     
     if not user:
-        raise HTTPException(status_code=404, detail="Profil nicht gefunden")
+        raise HTTPException(status_code=404, detail="User not found")
     
     if not user.reset_code:
         raise HTTPException(status_code=400, detail="No reset code requested")
@@ -361,7 +384,7 @@ async def verify_reset_code(data: VerifyResetCodeRequest, db: Session = Depends(
     }
 
 
-@app.post("/reset-password")
+@app.post("/reset-password", tags=["Password Management"])
 async def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
     """
     Schritt 3: User gibt neues Passwort ein
@@ -370,7 +393,7 @@ async def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_d
     user = db.query(models.Users).filter(models.Users.email == data.email).first()
     
     if not user:
-        raise HTTPException(status_code=404, detail="Profil nicht gefunden")
+        raise HTTPException(status_code=404, detail="User not found")
     
     if not user.reset_code:
         raise HTTPException(status_code=400, detail="No reset code requested")
@@ -384,7 +407,7 @@ async def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_d
     
     # Prüfe ob Code korrekt ist
     if user.reset_code != data.code:
-        raise HTTPException(status_code=400, detail="Falscher Reset Code")
+        raise HTTPException(status_code=400, detail="Invalid reset code")
     
     # Setze neues Passwort
     user.password = pwd_context.hash(data.new_password)
@@ -397,44 +420,39 @@ async def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_d
     
     return {
         "status": "ok",
-        "message": "Passwort wurde erfolgreich zurückgesetzt"
+        "message": "Password has been reset successfully"
     }
 
-@app.post("/change-password")
+
+@app.post("/change-password", tags=["Password Management"])
 async def change_password(data: ChangePasswordRequest, db: Session = Depends(get_db)):
     """
     Ändert das Passwort eines Users nach Verifizierung des aktuellen Passworts
     """
     user = db.query(models.Users).filter(models.Users.email == data.email).first()
-
+    
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
+        raise HTTPException(status_code=404, detail="Profil nicht gefunden")
+    
     # Prüfe ob aktuelles Passwort korrekt ist
     if not pwd_context.verify(data.current_password, user.password):
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
-
+        raise HTTPException(status_code=400, detail="Aktuelles Passwort ist falsch")
+    
     # Prüfe ob neues Passwort unterschiedlich zum alten ist
     if data.current_password == data.new_password:
-        raise HTTPException(status_code=400, detail="New password must be different from current password")
-
+        raise HTTPException(status_code=400, detail="Neues Passwort darf nicht dem alten entsprechen")
+    
     try:
         # Setze neues Passwort
         user.password = pwd_context.hash(data.new_password)
         db.commit()
-
+        
         return {
             "status": "ok",
-            "message": "Password has been changed successfully"
+            "message": "Passwort wurde erfolgreich geändert"
         }
-
+        
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error changing password: {str(e)}")
 
-
-# ==================== HEALTH CHECK ====================
-
-@app.get("/health")
-async def health_check():
-    return {"status": "ok", "message": "API is running"}

@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import Login from './components/Login';
-import ForgotPassword from './components/ForgotPassword';
+import ForgotPassword from './components/Forgotpassword';
 import TwoFA from './components/TwoFa';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';

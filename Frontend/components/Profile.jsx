@@ -272,10 +272,10 @@ const Profile = ({ navigation }) => {
             <Text style={styles.title}>Profil Einstellungen</Text>
             <Text style={styles.subtitle}>Verwalte deine Account-Informationen und Einstellungen</Text>
           </View>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          {/* <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={20} color="white" />
             <Text style={styles.logoutButtonText}>Abmelden</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         {/* Tabs */}
