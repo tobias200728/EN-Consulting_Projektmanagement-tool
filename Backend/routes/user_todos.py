@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date
 from database import SessionLocal
 import models
 from utils.helpers import get_user
@@ -40,8 +40,6 @@ def format_user_todo_response(todo):
         "status": todo.status,
         "priority": todo.priority,
         "due_date": str(todo.due_date) if todo.due_date else None,
-        "created_at": todo.created_at.isoformat() if todo.created_at else None,
-        "updated_at": todo.updated_at.isoformat() if todo.updated_at else None
     }
 
 @router.post("/users/{user_id}/todos")
@@ -88,10 +86,48 @@ async def get_user_todos(user_id: int, db: Session = Depends(get_db)):
     
     todos = db.query(models.UserTodo).filter(
         models.UserTodo.user_id == user_id
-    ).order_by(models.UserTodo.created_at.desc()).all()
+    ).all()
     
     todos_formatted = [format_user_todo_response(t) for t in todos]
     return {"status": "ok", "todos": todos_formatted, "total": len(todos_formatted)}
+
+@router.get("/users/{user_id}/todos/by-date/{date}")
+async def get_user_todos_by_date(user_id: int, date: str, db: Session = Depends(get_db)):
+    """
+    Gibt alle TODOs eines Users für ein bestimmtes Datum zurück
+    
+    Parameters:
+    - user_id: ID des Users
+    - date: Datum im Format YYYY-MM-DD (z.B. 2026-01-07)
+    
+    Returns:
+    - Liste von TODOs für das angegebene Datum
+    """
+    # Prüfe ob User existiert
+    user = get_user(user_id, db)
+    
+    try:
+        # Parse das Datum
+        date_obj = datetime.strptime(date, "%Y-%m-%d").date()
+        
+        # Hole alle TODOs für dieses Datum
+        todos = db.query(models.UserTodo).filter(
+            models.UserTodo.user_id == user_id,
+            models.UserTodo.due_date == date_obj
+        ).all()
+        
+        todos_formatted = [format_user_todo_response(t) for t in todos]
+        
+        return {
+            "status": "ok",
+            "date": date,
+            "todos": todos_formatted,
+            "total": len(todos_formatted)
+        }
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching todos: {str(e)}")
 
 @router.get("/users/{user_id}/todos/{todo_id}")
 async def get_user_todo(user_id: int, todo_id: int, db: Session = Depends(get_db)):
@@ -139,7 +175,6 @@ async def update_user_todo(user_id: int, todo_id: int, data: UserTodoUpdate, db:
         if data.due_date is not None:
             todo.due_date = datetime.strptime(data.due_date, "%Y-%m-%d").date()
         
-        todo.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(todo)
         

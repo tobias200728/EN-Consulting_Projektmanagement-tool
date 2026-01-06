@@ -69,6 +69,44 @@ class ProjectMember(Base):
     user = relationship("Users")
 
 
+class ProjectTodo(Base):
+    __tablename__ = 'project_todos'
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey('projects.id'), nullable=False)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(String(50), default='todo')  # todo, in-progress, completed
+    priority = Column(String(50), default='medium')  # low, medium, high
+    assigned_to = Column(Integer, ForeignKey('users.id'), nullable=True)
+    created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    due_date = Column(Date, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    project = relationship("Project")
+    assignee = relationship("Users", foreign_keys=[assigned_to])
+    creator = relationship("Users", foreign_keys=[created_by])
+
+
+class UserTodo(Base):
+    __tablename__ = 'user_todos'
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(String(50), default='todo')  # todo, in-progress, completed
+    priority = Column(String(50), default='medium')  # low, medium, high
+    due_date = Column(Date, nullable=True)
+    
+    # WICHTIG: created_at und updated_at ENTFERNT, da sie in der DB nicht existieren!
+
+    # Relationships
+    user = relationship("Users")
+
+
 # Enum für User Roles (für RBAC)
 class UserRole:
     ADMIN = "admin"
