@@ -16,10 +16,13 @@ const Projects = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [taskModalVisible, setTaskModalVisible] = useState(false);
+  const [editTaskModalVisible, setEditTaskModalVisible] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
   const [editProjectModalVisible, setEditProjectModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   
   const [projectsList, setProjectsList] = useState([]);
+  
   
   const [newProject, setNewProject] = useState({
     name: "",
@@ -331,10 +334,13 @@ const Projects = () => {
       const response = await fetch(`${API_URL}/projects/${project.id}?user_id=${id}`);
       const data = await response.json();
 
+      
+
       if (response.ok && data.status === "ok") {
         // Members separat laden
         let memberCount = 0;
         let todos = [];
+
         try {
           const membersResponse = await fetch(
             `${API_URL}/projects/${project.id}/members?user_id=${id}`
@@ -353,7 +359,13 @@ const Projects = () => {
           );
           const todosData = await todosResponse.json();
           if (todosResponse.ok && todosData.status === "ok") {
-            todos = todosData.todos;
+            todos = todosData.todos.map(t => ({
+              id: t.id,
+              name: t.title,                  // 🔥 wichtig
+              status: t.status,
+              importance: t.priority,         // 🔥 wichtig
+              assignedTo: t.assignee?.name || null
+            }));
           }
         } catch (e) {
           console.log("Could not load todos");
@@ -408,6 +420,16 @@ const Projects = () => {
     setTaskModalVisible(false);
   };
 
+  const openEditTask = (task) => {
+  setEditingTask({ ...task });
+  setEditTaskModalVisible(true);
+};
+
+const closeEditTaskModal = () => {
+  setEditTaskModalVisible(false);
+  setEditingTask(null);
+};
+
   const handleSaveTask = async () => {
   if (!newTask.name.trim()) {
     showInfo("Fehler", "Bitte gib einen Task-Namen ein!");
@@ -436,7 +458,13 @@ const Projects = () => {
     if (response.ok && data.status === "ok") {
       setSelectedProject({
         ...selectedProject,
-        tasks: [data.todo, ...selectedProject.tasks],
+        tasks: [{
+          id: data.todo.id,
+          name: data.todo.title,
+          status: data.todo.status,
+          importance: data.todo.priority,
+          assignedTo: data.todo.assignee?.name || null
+        }, ...selectedProject.tasks],
       });
       closeTaskModal();
     } else {
@@ -449,24 +477,97 @@ const Projects = () => {
   }
 };
 
-  const moveTask = (taskId, newStatus) => {
-    const updatedTasks = selectedProject.tasks.map(task =>
-      task.id === taskId ? { ...task, status: newStatus } : task
+const handleUpdateTask = async () => {
+  try {
+    setLoading(true);
+    const id = await AsyncStorage.getItem("user_id");
+
+    const response = await fetch(
+      `${API_URL}/projects/${selectedProject.id}/todos/${editingTask.id}?user_id=${id}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editingTask.name,
+          priority: editingTask.importance
+        }),
+      }
     );
 
-    const updatedProject = {
+    const data = await response.json();
+
+    if (response.ok && data.status === "ok") {
+      const updatedTasks = selectedProject.tasks.map(t =>
+        t.id === editingTask.id
+          ? {
+              ...t,
+              name: data.todo.title,
+              importance: data.todo.priority,
+              status: data.todo.status
+            }
+          : t
+      );
+
+      setSelectedProject({
+        ...selectedProject,
+        tasks: updatedTasks,
+        progress: calculateProgressFromTodos(updatedTasks)
+      });
+
+      closeEditTaskModal();
+    } else {
+      showError("Fehler", data.detail || "Task konnte nicht aktualisiert werden");
+    }
+  } catch {
+    showError("Fehler", "Server nicht erreichbar");
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+  const moveTask = async (taskId, newStatus) => {
+  try {
+    const id = await AsyncStorage.getItem("user_id");
+
+    await fetch(
+      `${API_URL}/projects/${selectedProject.id}/todos/${taskId}?user_id=${id}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      }
+    );
+
+    setSelectedProject({
       ...selectedProject,
-      tasks: updatedTasks
-    };
+      tasks: selectedProject.tasks.map(t =>
+        t.id === taskId ? { ...t, status: newStatus } : t
+      ),
+    });
+  } catch {
+    showError("Fehler", "Task konnte nicht verschoben werden");
+  }
+};
 
-    setSelectedProject(updatedProject);
-    
-    // Auch in der Liste aktualisieren
-    const updatedProjects = projectsList.map(p =>
-      p.id === selectedProject.id ? updatedProject : p
+const deleteTask = async (taskId) => {
+  try {
+    const id = await AsyncStorage.getItem("user_id");
+
+    await fetch(
+      `${API_URL}/projects/${selectedProject.id}/todos/${taskId}?user_id=${id}`,
+      { method: "DELETE" }
     );
-    setProjectsList(updatedProjects);
-  };
+
+    setSelectedProject({
+      ...selectedProject,
+      tasks: selectedProject.tasks.filter(t => t.id !== taskId),
+    });
+  } catch {
+    showError("Fehler", "Task konnte nicht gelöscht werden");
+  }
+};
+
 
   const getTasksByStatus = (status) => {
     return selectedProject?.tasks.filter(task => task.status === status) || [];
@@ -803,6 +904,17 @@ const Projects = () => {
                         >
                           <View style={styles.taskItemHeader}>
                             <Text style={styles.taskItemName}>{task.name}</Text>
+                            <TouchableOpacity
+                              onPress={() => openEditTask(task)}   // ⬅️ kommt gleich
+                              style={styles.taskIconButton}
+                            >
+                              <Text style={styles.taskIcon}>✏️</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                              onPress={() => deleteTask(task.id)}
+                              style={styles.taskIconButton}>
+                              <Text>🗑</Text>
+                            </TouchableOpacity>
                           </View>
                           <View style={[styles.importanceBadge, { backgroundColor: getImportanceColor(task.importance) }]}>
                             <Text style={styles.importanceBadgeText}>{getImportanceLabel(task.importance)}</Text>
@@ -1153,6 +1265,83 @@ const Projects = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Modal für EditTask */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={editTaskModalVisible}
+        onRequestClose={closeEditTaskModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Task bearbeiten</Text>
+              <TouchableOpacity onPress={closeEditTaskModal} style={styles.closeButton}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Task Name</Text>
+              <TextInput
+                style={styles.input}
+                value={editingTask?.name }
+                onChangeText={(text) =>
+                  setEditingTask({ ...editingTask, name: text })
+                }
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Wichtigkeit</Text>
+              <View style={styles.statusButtons}>
+                {["low", "medium", "high"].map(level => (
+                  <TouchableOpacity
+                    key={level}
+                    style={[
+                      styles.importanceButton,
+                      editingTask?.importance === level &&
+                        (level === "low"
+                          ? styles.importanceButtonActiveLow
+                          : level === "medium"
+                          ? styles.importanceButtonActiveMedium
+                          : styles.importanceButtonActiveHigh)
+                    ]}
+                    onPress={() =>
+                      setEditingTask({ ...editingTask, importance: level })
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.statusButtonText,
+                        editingTask?.importance === level &&
+                          styles.statusButtonTextActive
+                      ]}
+                    >
+                      {level === "low"
+                        ? "Niedrig"
+                        : level === "medium"
+                        ? "Mittel"
+                        : "Hoch"}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.cancelButton} onPress={closeEditTaskModal}>
+                <Text style={styles.cancelButtonText}>Abbrechen</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.saveButton} onPress={handleUpdateTask}>
+                <Text style={styles.saveButtonText}>Speichern</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
 
       {/* CustomAlert verwenden */}
       <CustomAlert {...alert} onDismiss={hideAlert} />
