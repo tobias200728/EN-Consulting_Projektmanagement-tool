@@ -81,8 +81,6 @@ class ProjectTodo(Base):
     assigned_to = Column(Integer, ForeignKey('users.id'), nullable=True)
     created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
     due_date = Column(Date, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     project = relationship("Project")

@@ -59,8 +59,6 @@ def format_todo_response(todo, db: Session):
         "created_by": todo.created_by,
         "creator_email": creator.email if creator else None,
         "due_date": str(todo.due_date) if todo.due_date else None,
-        "created_at": todo.created_at.isoformat() if todo.created_at else None,
-        "updated_at": todo.updated_at.isoformat() if todo.updated_at else None
     }
 
 @router.post("/projects/{project_id}/todos")
@@ -115,7 +113,7 @@ async def get_project_todos(project_id: int, user_id: int, db: Session = Depends
     
     todos = db.query(models.ProjectTodo).filter(
         models.ProjectTodo.project_id == project_id
-    ).order_by(models.ProjectTodo.created_at.desc()).all()
+    ).all()
     
     todos_formatted = [format_todo_response(t, db) for t in todos]
     return {"status": "ok", "todos": todos_formatted, "total": len(todos_formatted)}

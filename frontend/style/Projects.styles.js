@@ -727,4 +727,24 @@ export const styles = StyleSheet.create({
   saveButtonDisabled: {
     opacity: 0.6,
   },
+
+  taskItemHeader: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+},
+
+taskItemActions: {
+  flexDirection: "row",
+  gap: 8,
+},
+
+taskIconButton: {
+  padding: 4,
+  borderRadius: 6,
+},
+
+taskIcon: {
+  fontSize: 14,
+},
 });
