@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
-import AwesomeAlert from 'react-native-awesome-alerts';
+import CustomAlert from './CustomAlert';
+import useAlert from '../hooks/UseAlert';
 
 const API_URL = "http://127.0.0.1:8000";
 
@@ -12,43 +13,8 @@ export default function ForgotPassword({ navigation }) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   
-  // Alert States
-  const [showAlert, setShowAlert] = useState(false);
-  const [alertTitle, setAlertTitle] = useState('');
-  const [alertMessage, setAlertMessage] = useState('');
-  const [alertType, setAlertType] = useState('error');
-  const [alertAction, setAlertAction] = useState(null);
-
-  const showError = (title, message) => {
-    setAlertTitle(title);
-    setAlertMessage(message);
-    setAlertType('error');
-    setAlertAction(null);
-    setShowAlert(true);
-  };
-
-  const showSuccess = (title, message, action = null) => {
-    setAlertTitle(title);
-    setAlertMessage(message);
-    setAlertType('success');
-    setAlertAction(() => action);
-    setShowAlert(true);
-  };
-
-  const showInfo = (title, message) => {
-    setAlertTitle(title);
-    setAlertMessage(message);
-    setAlertType('info');
-    setAlertAction(null);
-    setShowAlert(true);
-  };
-
-  const handleAlertConfirm = () => {
-    setShowAlert(false);
-    if (alertAction) {
-      alertAction();
-    }
-  };
+  // Alert Hook verwenden
+  const { alert, showError, showSuccess, showInfo, hideAlert } = useAlert();
 
   // Schritt 1: Email eingeben und Code anfordern
   const handleRequestCode = async () => {
@@ -324,29 +290,8 @@ export default function ForgotPassword({ navigation }) {
         )}
       </View>
 
-      {/* AwesomeAlert Vorlage */}
-      <AwesomeAlert
-        show={showAlert}
-        showProgress={false}
-        title={alertTitle}
-        message={alertMessage}
-        closeOnTouchOutside={false}
-        closeOnHardwareBackPress={false}
-        showConfirmButton={true}
-        confirmText="OK"
-        confirmButtonColor={
-          alertType === 'error' ? '#dc3545' : 
-          alertType === 'success' ? '#28a745' : 
-          '#2b5fff'
-        }
-        overlayStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-        onConfirmPressed={handleAlertConfirm}
-        titleStyle={styles.alertTitle}
-        messageStyle={styles.alertMessage}
-        contentContainerStyle={styles.alertContainer}
-        confirmButtonStyle={styles.alertButton}
-        confirmButtonTextStyle={styles.alertButtonText}
-      />
+      {/* CustomAlert verwenden */}
+      <CustomAlert {...alert} onDismiss={hideAlert} />
     </View>
   );
 }
@@ -426,27 +371,5 @@ const styles = StyleSheet.create({
   backText: {
     color: "#2b5fff",
     fontSize: 14,
-  },
-  alertContainer: {
-    borderRadius: 10,
-    padding: 20,
-  },
-  alertTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  alertMessage: {
-    fontSize: 17,
-    textAlign: 'center',
-    marginTop: 10,
-  },
-  alertButton: {
-    paddingHorizontal: 30,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  alertButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

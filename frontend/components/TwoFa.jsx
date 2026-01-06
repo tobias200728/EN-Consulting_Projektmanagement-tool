@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import CustomAlert from './CustomAlert';
+import useAlert from '../hooks/UseAlert';
 
 const API_URL = "http://127.0.0.1:8000";
 
@@ -8,6 +10,9 @@ export default function TwoFA({ route, navigation }) {
   const { email, user_id, role } = route.params;
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Alert Hook verwenden
+  const { alert, showError, hideAlert } = useAlert();
 
   // User-Daten lokal speichern
   const saveUserData = async (userData) => {
@@ -28,7 +33,7 @@ export default function TwoFA({ route, navigation }) {
 
   const handle2FA = async () => {
     if (!code || code.length !== 6) {
-      Alert.alert("Fehler", "Bitte gültigen 6-stelligen Code eingeben");
+      showError("Fehler", "Bitte gültigen 6-stelligen Code eingeben");
       return;
     }
 
@@ -60,11 +65,11 @@ export default function TwoFA({ route, navigation }) {
 
         navigation.navigate("Dashboard");
       } else {
-        Alert.alert("Fehler", data.detail || "Ungültiger 2FA-Code");
+        showError("Fehler", data.detail || "Ungültiger 2FA-Code");
       }
     } catch (error) {
       console.log("2FA Error:", error);
-      Alert.alert("Fehler", "Verbindung zum Server fehlgeschlagen");
+      showError("Fehler", "Verbindung zum Server fehlgeschlagen");
     } finally {
       setLoading(false);
     }
@@ -104,6 +109,9 @@ export default function TwoFA({ route, navigation }) {
           <Text style={styles.backText}>Zurück zum Login</Text>
         </TouchableOpacity>
       </View>
+
+      {/* CustomAlert verwenden */}
+      <CustomAlert {...alert} onDismiss={hideAlert} />
     </View>
   );
 }
