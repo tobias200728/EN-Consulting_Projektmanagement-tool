@@ -24,7 +24,7 @@ def is_project_member(db: Session, user_id: int, project_id: int) -> bool:
     ).first() is not None
 
 
-def get_user_projects(db: Session, user: models.Users) -> List[models.Project]:
+def get_user_projects(db: Session, user: models.Users) -> List:
     """
     Gibt alle Projekte zurück, auf die ein User Zugriff hat.
     - Admin: Alle Projekte
@@ -90,111 +90,6 @@ def can_manage_project_members(user: models.Users) -> bool:
     Kann der User Mitglieder zu Projekten hinzufügen/entfernen?
     - Admin: Ja
     - Employee: Nein
-    - Guest: Nein
-    """
-    return user.is_admin
-
-
-def can_view_documents(db: Session, user: models.Users, project_id: int) -> bool:
-    """
-    Kann der User Dokumente in diesem Projekt sehen?
-    - Admin: Ja (alle)
-    - Employee: Ja (wenn Projektmitglied)
-    - Guest: Ja (wenn Projektmitglied) - READ ONLY
-    """
-    if user.is_admin:
-        return True
-    return is_project_member(db, user.id, project_id)
-
-
-def can_upload_documents(db: Session, user: models.Users, project_id: int) -> bool:
-    """
-    Kann der User Dokumente hochladen?
-    - Admin: Ja
-    - Employee: Ja (wenn Projektmitglied)
-    - Guest: Nein
-    """
-    if user.is_guest:
-        return False
-    if user.is_admin:
-        return True
-    return is_project_member(db, user.id, project_id)
-
-
-def can_delete_documents(db: Session, user: models.Users, project_id: int, document: models.Document) -> bool:
-    """
-    Kann der User dieses Dokument löschen?
-    - Admin: Ja (alle)
-    - Employee: Nur eigene hochgeladene Dokumente
-    - Guest: Nein
-    """
-    if user.is_guest:
-        return False
-    if user.is_admin:
-        return True
-    # Employee kann nur eigene Dokumente löschen
-    return document.uploaded_by == user.id
-
-
-def can_view_project_todos(db: Session, user: models.Users, project_id: int) -> bool:
-    """
-    Kann der User ToDos in diesem Projekt sehen?
-    - Admin: Ja
-    - Employee: Ja (wenn Projektmitglied)
-    - Guest: Ja (wenn Projektmitglied) - READ ONLY
-    """
-    if user.is_admin:
-        return True
-    return is_project_member(db, user.id, project_id)
-
-
-def can_create_project_todos(db: Session, user: models.Users, project_id: int) -> bool:
-    """
-    Kann der User ToDos in diesem Projekt erstellen?
-    - Admin: Ja
-    - Employee: Ja (wenn Projektmitglied)
-    - Guest: Nein
-    """
-    if user.is_guest:
-        return False
-    if user.is_admin:
-        return True
-    return is_project_member(db, user.id, project_id)
-
-
-def can_edit_project_todo(db: Session, user: models.Users, todo: models.ProjectToDo) -> bool:
-    """
-    Kann der User dieses ToDo bearbeiten?
-    - Admin: Ja (alle)
-    - Employee: Ja (wenn Projektmitglied)
-    - Guest: Nein
-    """
-    if user.is_guest:
-        return False
-    if user.is_admin:
-        return True
-    return is_project_member(db, user.id, todo.project_id)
-
-
-def can_delete_project_todo(db: Session, user: models.Users, todo: models.ProjectToDo) -> bool:
-    """
-    Kann der User dieses ToDo löschen?
-    - Admin: Ja (alle)
-    - Employee: Nur eigene erstellte ToDos
-    - Guest: Nein
-    """
-    if user.is_guest:
-        return False
-    if user.is_admin:
-        return True
-    return todo.created_by == user.id
-
-
-def can_assign_todos(user: models.Users) -> bool:
-    """
-    Kann der User ToDos anderen Usern zuweisen?
-    - Admin: Ja
-    - Employee: Nein (nur Admin kann zuweisen)
     - Guest: Nein
     """
     return user.is_admin
@@ -267,28 +162,6 @@ def require_active_user(user: models.Users):
 ║ ├─ Projekt löschen              │  ✓    │     ✗       │   ✗                   ║
 ║ └─ Mitglieder verwalten         │  ✓    │     ✗       │   ✗                   ║
 ╠═════════════════════════════════╪═══════╪═════════════╪═══════════════════════╣
-║ DOKUMENTE (in zugewiesenen      │       │             │                       ║
-║            Projekten)           │       │             │                       ║
-║ ├─ Dokumente ansehen            │  ✓    │     ✓       │   ✓                   ║
-║ ├─ Dokumente hochladen          │  ✓    │     ✓       │   ✗                   ║
-║ ├─ Eigene Dokumente löschen     │  ✓    │     ✓       │   ✗                   ║
-║ └─ Alle Dokumente löschen       │  ✓    │     ✗       │   ✗                   ║
-╠═════════════════════════════════╪═══════╪═════════════╪═══════════════════════╣
-║ PROJECT TODOS (in zugewiesenen  │       │             │                       ║
-║                Projekten)       │       │             │                       ║
-║ ├─ ToDos ansehen                │  ✓    │     ✓       │   ✓                   ║
-║ ├─ ToDos erstellen              │  ✓    │     ✓       │   ✗                   ║
-║ ├─ ToDos bearbeiten             │  ✓    │     ✓       │   ✗                   ║
-║ ├─ Eigene ToDos löschen         │  ✓    │     ✓       │   ✗                   ║
-║ ├─ Alle ToDos löschen           │  ✓    │     ✗       │   ✗                   ║
-║ └─ ToDos zuweisen               │  ✓    │     ✗       │   ✗                   ║
-╠═════════════════════════════════╪═══════╪═════════════╪═══════════════════════╣
-║ PERSÖNLICHE TODOS               │       │             │                       ║
-║ ├─ Eigene ToDos ansehen         │  ✓    │     ✓       │   ✓                   ║
-║ ├─ Eigene ToDos erstellen       │  ✓    │     ✓       │   ✗                   ║
-║ ├─ Eigene ToDos bearbeiten      │  ✓    │     ✓       │   ✗                   ║
-║ └─ Eigene ToDos löschen         │  ✓    │     ✓       │   ✗                   ║
-╠═════════════════════════════════╪═══════╪═════════════╪═══════════════════════╣
 ║ USER VERWALTUNG                 │       │             │                       ║
 ║ ├─ Alle User sehen              │  ✓    │     ✗       │   ✗                   ║
 ║ ├─ User erstellen               │  ✓    │     ✗       │   ✗                   ║
@@ -296,4 +169,7 @@ def require_active_user(user: models.Users):
 ║ ├─ User löschen                 │  ✓    │     ✗       │   ✗                   ║
 ║ └─ Eigenes Profil bearbeiten    │  ✓    │     ✓       │   ✓                   ║
 ╚═════════════════════════════════╧═══════╧═════════════╧═══════════════════════╝
+
+Hinweis: Funktionen für Documents und ProjectToDos wurden entfernt, 
+da diese Models noch nicht existieren. Sie können später hinzugefügt werden.
 """
