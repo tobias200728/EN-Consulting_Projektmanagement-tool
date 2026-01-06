@@ -45,15 +45,12 @@ def format_user_todo_response(todo):
     }
 
 @router.post("/users/{user_id}/todos")
-async def create_user_todo(user_id: int, data: UserTodoCreate, requesting_user_id: int, db: Session = Depends(get_db)):
-    requesting_user = get_user(requesting_user_id, db)
-    
-    # User kann nur eigene TODOs erstellen, außer Admin
-    if user_id != requesting_user_id and not requesting_user.is_admin:
-        raise HTTPException(status_code=403, detail="You can only create TODOs for yourself")
-    
-    # Prüfe ob target user existiert
-    target_user = get_user(user_id, db)
+async def create_user_todo(user_id: int, data: UserTodoCreate, db: Session = Depends(get_db)):
+    """
+    Erstellt ein neues TODO für den angegebenen User
+    """
+    # Prüfe ob User existiert
+    user = get_user(user_id, db)
     
     try:
         due_date_obj = None
@@ -82,12 +79,12 @@ async def create_user_todo(user_id: int, data: UserTodoCreate, requesting_user_i
         raise HTTPException(status_code=500, detail=f"Error creating TODO: {str(e)}")
 
 @router.get("/users/{user_id}/todos")
-async def get_user_todos(user_id: int, requesting_user_id: int, db: Session = Depends(get_db)):
-    requesting_user = get_user(requesting_user_id, db)
-    
-    # User kann nur eigene TODOs sehen, außer Admin
-    if user_id != requesting_user_id and not requesting_user.is_admin:
-        raise HTTPException(status_code=403, detail="You can only view your own TODOs")
+async def get_user_todos(user_id: int, db: Session = Depends(get_db)):
+    """
+    Gibt alle TODOs eines Users zurück
+    """
+    # Prüfe ob User existiert
+    user = get_user(user_id, db)
     
     todos = db.query(models.UserTodo).filter(
         models.UserTodo.user_id == user_id
@@ -97,11 +94,12 @@ async def get_user_todos(user_id: int, requesting_user_id: int, db: Session = De
     return {"status": "ok", "todos": todos_formatted, "total": len(todos_formatted)}
 
 @router.get("/users/{user_id}/todos/{todo_id}")
-async def get_user_todo(user_id: int, todo_id: int, requesting_user_id: int, db: Session = Depends(get_db)):
-    requesting_user = get_user(requesting_user_id, db)
-    
-    if user_id != requesting_user_id and not requesting_user.is_admin:
-        raise HTTPException(status_code=403, detail="You can only view your own TODOs")
+async def get_user_todo(user_id: int, todo_id: int, db: Session = Depends(get_db)):
+    """
+    Gibt ein spezifisches TODO zurück
+    """
+    # Prüfe ob User existiert
+    user = get_user(user_id, db)
     
     todo = db.query(models.UserTodo).filter(
         models.UserTodo.id == todo_id,
@@ -114,11 +112,12 @@ async def get_user_todo(user_id: int, todo_id: int, requesting_user_id: int, db:
     return {"status": "ok", "todo": format_user_todo_response(todo)}
 
 @router.put("/users/{user_id}/todos/{todo_id}")
-async def update_user_todo(user_id: int, todo_id: int, data: UserTodoUpdate, requesting_user_id: int, db: Session = Depends(get_db)):
-    requesting_user = get_user(requesting_user_id, db)
-    
-    if user_id != requesting_user_id and not requesting_user.is_admin:
-        raise HTTPException(status_code=403, detail="You can only update your own TODOs")
+async def update_user_todo(user_id: int, todo_id: int, data: UserTodoUpdate, db: Session = Depends(get_db)):
+    """
+    Aktualisiert ein TODO
+    """
+    # Prüfe ob User existiert
+    user = get_user(user_id, db)
     
     todo = db.query(models.UserTodo).filter(
         models.UserTodo.id == todo_id,
@@ -154,11 +153,12 @@ async def update_user_todo(user_id: int, todo_id: int, data: UserTodoUpdate, req
         raise HTTPException(status_code=500, detail=f"Error updating TODO: {str(e)}")
 
 @router.delete("/users/{user_id}/todos/{todo_id}")
-async def delete_user_todo(user_id: int, todo_id: int, requesting_user_id: int, db: Session = Depends(get_db)):
-    requesting_user = get_user(requesting_user_id, db)
-    
-    if user_id != requesting_user_id and not requesting_user.is_admin:
-        raise HTTPException(status_code=403, detail="You can only delete your own TODOs")
+async def delete_user_todo(user_id: int, todo_id: int, db: Session = Depends(get_db)):
+    """
+    Löscht ein TODO
+    """
+    # Prüfe ob User existiert
+    user = get_user(user_id, db)
     
     todo = db.query(models.UserTodo).filter(
         models.UserTodo.id == todo_id,

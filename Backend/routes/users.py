@@ -42,6 +42,42 @@ async def create_user(userdata: UserData, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/users")
+async def get_all_users(admin_user_id: int, db: Session = Depends(get_db)):
+    """
+    Admin-Endpoint: Zeigt alle User im System an
+    Nur für Admins zugänglich
+    """
+    # Prüfe ob der anfragende User ein Admin ist
+    admin_user = db.query(models.Users).filter(models.Users.id == admin_user_id).first()
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not admin_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only admins can view all users")
+    
+    try:
+        users = db.query(models.Users).order_by(models.Users.id).all()
+        
+        users_list = []
+        for user in users:
+            users_list.append({
+                "id": user.id,
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "role": user.role,
+                "twofa_enabled": user.twofa_enabled
+            })
+        
+        return {
+            "status": "ok",
+            "users": users_list,
+            "total": len(users_list)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching users: {str(e)}")
+
 @router.get("/getuserbyID/{user_id}")
 async def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
     result = db.query(models.Users).filter(models.Users.id == user_id).first()
@@ -53,7 +89,7 @@ async def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
         "first_name": result.first_name,
         "last_name": result.last_name,
         "role": result.role,
-        "is_active": result.is_active
+        "twofa_enabled": result.twofa_enabled
     }
 
 @router.delete("/deleteuser/{user_id}")
