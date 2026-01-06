@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, ActivityInd
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Layout from "./Layout";
 import CustomAlert from "./CustomAlert";
-import useAlert from "../hooks/UseAlert";
+import useAlert from "../hooks/useAlert";
 import { styles } from "../style/Calendar.styles";
 
 const API_URL = "http://127.0.0.1:8000";

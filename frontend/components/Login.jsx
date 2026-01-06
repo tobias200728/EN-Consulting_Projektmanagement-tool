@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomAlert from './CustomAlert';
-import useAlert from '../hooks/UseAlert';
+import useAlert from '../hooks/useAlert';
 
 const API_URL = "http://127.0.0.1:8000";
 

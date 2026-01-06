@@ -1,18 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomAlert from './CustomAlert';
-import useAlert from '../hooks/UseAlert';
+import useAlert from '../hooks/useAlert';
 
 const API_URL = "http://127.0.0.1:8000";
 
 export default function TwoFA({ route, navigation }) {
-  const { email, user_id, role } = route.params;
+  // Sicherer Zugriff auf Parameter mit Fallback
+  const { email, user_id, role } = route.params || {};
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
 
   // Alert Hook verwenden
   const { alert, showError, hideAlert } = useAlert();
+
+  // Überprüfe beim Laden, ob Email vorhanden ist
+  useEffect(() => {
+    console.log("TwoFA loaded with params:", { email, user_id, role });
+    
+    if (!email || !email.includes('@')) {
+      console.error("FEHLER: Keine gültige Email in route.params!");
+      showError(
+        "Fehler", 
+        "Keine gültige Email-Adresse gefunden. Bitte melde dich erneut an.",
+        () => navigation.navigate("Login")
+      );
+    }
+  }, []);
 
   // User-Daten lokal speichern
   const saveUserData = async (userData) => {
@@ -32,6 +47,16 @@ export default function TwoFA({ route, navigation }) {
   };
 
   const handle2FA = async () => {
+    // Validierung: Email muss vorhanden sein
+    if (!email || !email.includes('@')) {
+      showError(
+        "Fehler", 
+        "Ungültige Email-Adresse. Bitte kehre zurück und melde dich erneut an.",
+        () => navigation.goBack()
+      );
+      return;
+    }
+
     if (!code || code.length !== 6) {
       showError("Fehler", "Bitte gültigen 6-stelligen Code eingeben");
       return;
@@ -40,6 +65,8 @@ export default function TwoFA({ route, navigation }) {
     setLoading(true);
 
     try {
+      console.log("Sende 2FA Request mit Email:", email);
+      
       const res = await fetch(`${API_URL}/login/2fa`, {
         method: "POST",
         headers: {
@@ -52,7 +79,7 @@ export default function TwoFA({ route, navigation }) {
       });
 
       const data = await res.json();
-      console.log("2FA Login:", data);
+      console.log("2FA Login Response:", data);
 
       if (res.ok && data.status === "ok") {
         // User-Daten speichern
@@ -80,7 +107,15 @@ export default function TwoFA({ route, navigation }) {
       <View style={styles.box}>
         <Text style={styles.title}>2-Faktor Authentifizierung</Text>
         <Text style={styles.subtitle}>Gib deinen 2FA-Code ein für:</Text>
-        <Text style={styles.email}>{email}</Text>
+        <Text style={styles.email}>{email || "Keine Email gefunden"}</Text>
+
+        {(!email || !email.includes('@')) && (
+          <View style={styles.warningBox}>
+            <Text style={styles.warningText}>
+              ⚠️ Ungültige Email-Adresse. Bitte kehre zurück und melde dich erneut an.
+            </Text>
+          </View>
+        )}
 
         <Text style={styles.label}>Verification Code</Text>
         <TextInput
@@ -93,9 +128,9 @@ export default function TwoFA({ route, navigation }) {
         />
 
         <TouchableOpacity 
-          style={[styles.button, loading && styles.buttonDisabled]} 
+          style={[styles.button, (loading || !email) && styles.buttonDisabled]} 
           onPress={handle2FA}
-          disabled={loading}
+          disabled={loading || !email || !email.includes('@')}
         >
           <Text style={styles.buttonText}>
             {loading ? "Wird geprüft..." : "Bestätigen"}
@@ -147,6 +182,19 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "500",
     marginBottom: 20,
+  },
+  warningBox: {
+    backgroundColor: '#fff3cd',
+    borderWidth: 1,
+    borderColor: '#ffc107',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 15,
+  },
+  warningText: {
+    fontSize: 12,
+    color: '#856404',
+    textAlign: 'center',
   },
   label: {
     marginTop: 10,
