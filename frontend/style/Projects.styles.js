@@ -430,7 +430,7 @@ export const styles = StyleSheet.create({
 
   // Detail Modal
   detailModalContent: {
-    width: '95%',
+    width: '60%',
     height: '95%',
     backgroundColor: 'white',
     borderRadius: 15,
@@ -484,8 +484,9 @@ export const styles = StyleSheet.create({
   statsCards: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
     paddingHorizontal: 20,
-    gap: 15,
+    gap: 20,
   },
   statCard: {
     width: '47%',
@@ -527,46 +528,173 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     gap: 10,
+    flexWrap: 'wrap',
   },
   editButton: {
     flex: 1,
-    padding: 12,
-    borderRadius: 8,
+    minWidth: 100,
+    padding: 14,
+    borderRadius: 10,
     backgroundColor: '#2b5fff',
     alignItems: 'center',
   },
   editButtonText: {
     color: 'white',
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 15,
+  },
+  addMemberButton: {
+    flex: 1,
+    minWidth: 150,
+    padding: 14,
+    borderRadius: 10,
+    backgroundColor: '#28a745',
+    alignItems: 'center',
+  },
+  addMemberButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 15,
   },
   deleteButton: {
     flex: 1,
-    padding: 12,
-    borderRadius: 8,
+    minWidth: 100,
+    padding: 14,
+    borderRadius: 10,
     backgroundColor: '#dc3545',
     alignItems: 'center',
   },
   deleteButtonText: {
     color: 'white',
     fontWeight: '600',
+    fontSize: 15,
+  },
+
+  // Members Section
+  membersSection: {
+    padding: 20,
+    paddingTop: 10,
+  },
+  membersSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#0a0f33',
+    marginBottom: 15,
+  },
+  membersList: {
+    gap: 10,
+  },
+  memberItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f9f9f9',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  memberInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  memberIcon: {
+    fontSize: 20,
+    marginRight: 10,
+  },
+  memberName: {
     fontSize: 14,
+    fontWeight: '600',
+    color: '#0a0f33',
+  },
+  memberEmail: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  removeMemberButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#ffebee',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeMemberButtonText: {
+    fontSize: 16,
+    color: '#dc3545',
+    fontWeight: 'bold',
+  },
+
+  // User Selection List
+  userList: {
+    maxHeight: 300,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 5,
+  },
+  userItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 5,
+    backgroundColor: '#f9f9f9',
+  },
+  userItemSelected: {
+    backgroundColor: '#e3f2fd',
+    borderWidth: 2,
+    borderColor: '#2b5fff',
+  },
+  userItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  userItemIcon: {
+    fontSize: 18,
+    marginRight: 10,
+  },
+  userItemName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0a0f33',
+  },
+  userItemEmail: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  userItemRole: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 2,
+  },
+  userItemCheck: {
+    fontSize: 20,
+    color: '#2b5fff',
+    fontWeight: 'bold',
   },
 
   // Tasks Section
   tasksSection: {
     padding: 20,
-    paddingTop: 10,
+    paddingTop: 30,
+    alignItems: 'center',
   },
   tasksColumns: {
     flexDirection: 'row',
-    gap: 15,
+    gap: 25,
+    justifyContent: 'center',
   },
   taskColumn: {
-    width: 280,
+    width: 330,
     backgroundColor: '#f9f9f9',
-    borderRadius: 12,
-    padding: 15,
+    borderRadius: 14,
+    padding: 18,
   },
   taskColumnHeader: {
     flexDirection: 'row',
@@ -576,12 +704,8 @@ export const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
-  taskColumnIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
   taskColumnTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
     color: '#0a0f33',
     flex: 1,
@@ -591,18 +715,18 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#666',
     backgroundColor: '#e0e0e0',
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 2,
-    borderRadius: 10,
+    borderRadius: 12,
   },
   taskItem: {
     backgroundColor: 'white',
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 10,
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#e0e0e0',
-    borderLeftWidth: 3,
+    borderLeftWidth: 4,
     borderLeftColor: '#2b5fff',
   },
   taskItemCompleted: {
@@ -610,28 +734,36 @@ export const styles = StyleSheet.create({
   },
   taskItemHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  taskItemIcon: {
-    fontSize: 12,
-    marginRight: 6,
-  },
   taskItemName: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: '#0a0f33',
     flex: 1,
   },
+  taskItemActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  taskIconButton: {
+    padding: 4,
+    borderRadius: 6,
+  },
+  taskIcon: {
+    fontSize: 14,
+  },
   importanceBadge: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
     marginBottom: 8,
   },
   importanceBadgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
     color: 'white',
   },
@@ -650,13 +782,14 @@ export const styles = StyleSheet.create({
   },
   taskMoveButtons: {
     flexDirection: 'row',
-    gap: 5,
+    gap: 6,
+    marginTop: 6,
   },
   moveButton: {
     backgroundColor: '#e0e0e0',
-    padding: 6,
-    borderRadius: 6,
-    minWidth: 30,
+    padding: 8,
+    borderRadius: 8,
+    minWidth: 36,
     alignItems: 'center',
   },
   moveButtonText: {
@@ -666,15 +799,15 @@ export const styles = StyleSheet.create({
   },
   addTaskButton: {
     backgroundColor: 'white',
-    padding: 12,
-    borderRadius: 10,
+    padding: 14,
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: '#e0e0e0',
     borderStyle: 'dashed',
     alignItems: 'center',
   },
   addTaskButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: '#2b5fff',
   },
@@ -727,24 +860,4 @@ export const styles = StyleSheet.create({
   saveButtonDisabled: {
     opacity: 0.6,
   },
-
-  taskItemHeader: {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  alignItems: "center",
-},
-
-taskItemActions: {
-  flexDirection: "row",
-  gap: 8,
-},
-
-taskIconButton: {
-  padding: 4,
-  borderRadius: 6,
-},
-
-taskIcon: {
-  fontSize: 14,
-},
 });

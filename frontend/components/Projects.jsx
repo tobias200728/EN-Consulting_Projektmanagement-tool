@@ -19,10 +19,15 @@ const Projects = () => {
   const [editTaskModalVisible, setEditTaskModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [editProjectModalVisible, setEditProjectModalVisible] = useState(false);
+  const [addMemberModalVisible, setAddMemberModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [currentUserRole, setCurrentUserRole] = useState(null);
   
   const [projectsList, setProjectsList] = useState([]);
-  
+  const [allUsers, setAllUsers] = useState([]);
+  const [projectMembers, setProjectMembers] = useState([]);
+  const [selectedUserId, setSelectedUserId] = useState(null);
   
   const [newProject, setNewProject] = useState({
     name: "",
@@ -41,8 +46,53 @@ const Projects = () => {
 
   // User-ID beim Laden holen
   useEffect(() => {
+    loadUserData();
     loadProjects();
   }, []);
+
+  const loadUserData = async () => {
+    try {
+      const id = await AsyncStorage.getItem('user_id');
+      const role = await AsyncStorage.getItem('user_role');
+      setCurrentUserId(id);
+      setCurrentUserRole(role);
+    } catch (error) {
+      console.error("Error loading user data:", error);
+    }
+  };
+
+  // Alle User laden (nur für Admins)
+  const loadAllUsers = async () => {
+    try {
+      const id = await AsyncStorage.getItem('user_id');
+      const response = await fetch(`${API_URL}/users?admin_user_id=${id}`);
+      const data = await response.json();
+
+      if (response.ok && data.status === "ok") {
+        setAllUsers(data.users || []);
+      } else {
+        showError("Fehler", data.detail || "User konnten nicht geladen werden");
+      }
+    } catch (error) {
+      console.error("Error loading users:", error);
+      showError("Fehler", "Verbindung zum Server fehlgeschlagen");
+    }
+  };
+
+  // Projekt-Mitglieder laden
+  const loadProjectMembers = async (projectId) => {
+    try {
+      const id = await AsyncStorage.getItem('user_id');
+      const response = await fetch(`${API_URL}/projects/${projectId}/members?user_id=${id}`);
+      const data = await response.json();
+
+      if (response.ok && data.status === "ok") {
+        setProjectMembers(data.members || []);
+      }
+    } catch (error) {
+      console.error("Error loading project members:", error);
+    }
+  };
 
   // Projekte vom Backend laden
   const loadProjects = async () => {
@@ -58,11 +108,8 @@ const Projects = () => {
       const data = await response.json();
 
       if (response.ok && data.status === "ok") {
-        // Backend-Format in Frontend-Format umwandeln
-        // Für jedes Projekt die Members laden
         const formattedProjects = await Promise.all(
           data.projects.map(async (p) => {
-            // Lade Members für dieses Projekt
             let memberCount = 0;
             try {
               const membersResponse = await fetch(
@@ -98,6 +145,103 @@ const Projects = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Mitarbeiter zum Projekt hinzufügen
+  const handleAddMember = async () => {
+    if (!selectedUserId) {
+      showInfo("Fehler", "Bitte wähle einen Mitarbeiter aus!");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const id = await AsyncStorage.getItem('user_id');
+
+      const response = await fetch(
+        `${API_URL}/projects/${selectedProject.id}/members?user_id=${id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: selectedUserId
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.status === "ok") {
+        showSuccess("Erfolg", "Mitarbeiter wurde zum Projekt hinzugefügt!", () => {
+          closeAddMemberModal();
+          loadProjectMembers(selectedProject.id);
+          setSelectedProject({
+            ...selectedProject,
+            teamMembers: selectedProject.teamMembers + 1
+          });
+        });
+      } else {
+        if (data.detail && data.detail.includes("already a member")) {
+          showError("Fehler", "Dieser Mitarbeiter ist bereits im Projekt");
+        } else {
+          showError("Fehler", data.detail || "Mitarbeiter konnte nicht hinzugefügt werden");
+        }
+      }
+    } catch (error) {
+      console.error("Error adding member:", error);
+      showError("Fehler", "Verbindung zum Server fehlgeschlagen");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mitarbeiter aus Projekt entfernen
+  const handleRemoveMember = async (memberId) => {
+    showConfirm(
+      "Mitarbeiter entfernen",
+      "Möchtest du diesen Mitarbeiter wirklich aus dem Projekt entfernen?",
+      async () => {
+        try {
+          setLoading(true);
+          const id = await AsyncStorage.getItem('user_id');
+
+          const response = await fetch(
+            `${API_URL}/projects/${selectedProject.id}/members/${memberId}?user_id=${id}`,
+            {
+              method: "DELETE",
+            }
+          );
+
+          const data = await response.json();
+
+          if (response.ok && data.status === "ok") {
+            showSuccess("Erfolg", "Mitarbeiter wurde entfernt!", () => {
+              loadProjectMembers(selectedProject.id);
+              setSelectedProject({
+                ...selectedProject,
+                teamMembers: Math.max(0, selectedProject.teamMembers - 1)
+              });
+            });
+          } else {
+            showError("Fehler", data.detail || "Mitarbeiter konnte nicht entfernt werden");
+          }
+        } catch (error) {
+          console.error("Error removing member:", error);
+          showError("Fehler", "Verbindung zum Server fehlgeschlagen");
+        } finally {
+          setLoading(false);
+        }
+      },
+      () => {
+        console.log("Entfernen abgebrochen");
+      },
+      {
+        confirmText: "Entfernen",
+        cancelText: "Abbrechen"
+      }
+    );
   };
 
   // Projekt erstellen
@@ -168,7 +312,6 @@ const Projects = () => {
     try {
       setLoading(true);
 
-      // User-ID frisch laden
       const id = await AsyncStorage.getItem('user_id');
       if (!id) {
         showError("Fehler", "Keine User-ID gefunden. Bitte erneut einloggen.");
@@ -218,11 +361,9 @@ const Projects = () => {
       "Projekt löschen",
       "Möchtest du dieses Projekt wirklich löschen?",
       async () => {
-        // Bestätigt - Projekt löschen
         try {
           setLoading(true);
 
-          // User-ID frisch laden
           const id = await AsyncStorage.getItem('user_id');
           if (!id) {
             showError("Fehler", "Keine User-ID gefunden. Bitte erneut einloggen.");
@@ -255,7 +396,6 @@ const Projects = () => {
         }
       },
       () => {
-        // Abgebrochen
         console.log("Löschen abgebrochen");
       },
       {
@@ -306,6 +446,30 @@ const Projects = () => {
     return `${date.getDate()}. ${months[date.getMonth()]} ${date.getFullYear()}`;
   };
 
+  const calculateProgressFromTodos = (tasks = []) => {
+    if (tasks.length === 0) return 0;
+    const completed = tasks.filter(t => t.status === "completed").length;
+    return Math.round((completed / tasks.length) * 100);
+  };
+
+  const updateProjectEverywhere = (projectId, updatedTasks) => {
+    const newProgress = calculateProgressFromTodos(updatedTasks);
+
+    setSelectedProject(prev =>
+      prev && prev.id === projectId
+        ? { ...prev, tasks: updatedTasks, progress: newProgress }
+        : prev
+    );
+
+    setProjectsList(prev =>
+      prev.map(p =>
+        p.id === projectId
+          ? { ...p, progress: newProgress }
+          : p
+      )
+    );
+  };
+
   const openModal = () => {
     setNewProject({
       name: "",
@@ -323,21 +487,16 @@ const Projects = () => {
     try {
       setLoading(true);
 
-      // User-ID frisch laden
       const id = await AsyncStorage.getItem('user_id');
       if (!id) {
         showError("Fehler", "Keine User-ID gefunden. Bitte erneut einloggen.");
         return;
       }
 
-      // Projekt-Details vom Backend laden
       const response = await fetch(`${API_URL}/projects/${project.id}?user_id=${id}`);
       const data = await response.json();
 
-      
-
       if (response.ok && data.status === "ok") {
-        // Members separat laden
         let memberCount = 0;
         let todos = [];
 
@@ -361,9 +520,9 @@ const Projects = () => {
           if (todosResponse.ok && todosData.status === "ok") {
             todos = todosData.todos.map(t => ({
               id: t.id,
-              name: t.title,                  // 🔥 wichtig
+              name: t.title,
               status: t.status,
-              importance: t.priority,         // 🔥 wichtig
+              importance: t.priority,
               assignedTo: t.assignee?.name || null
             }));
           }
@@ -375,13 +534,17 @@ const Projects = () => {
           id: data.project.id,
           title: data.project.name,
           description: data.project.description,
-          progress: data.project.progress,
+          progress: calculateProgressFromTodos(todos),
           dueDate: data.project.due_date,
           teamMembers: memberCount,
           status: data.project.status,
           tasks: todos
         };
         setSelectedProject(formattedProject);
+        
+        // Lade Members für die Anzeige
+        await loadProjectMembers(project.id);
+        
         setDetailModalVisible(true);
       } else {
         showError("Fehler", data.detail || "Projekt konnte nicht geladen werden");
@@ -397,6 +560,7 @@ const Projects = () => {
   const closeProjectDetail = () => {
     setDetailModalVisible(false);
     setSelectedProject(null);
+    setProjectMembers([]);
   };
 
   const openEditProject = () => {
@@ -405,6 +569,17 @@ const Projects = () => {
 
   const closeEditProject = () => {
     setEditProjectModalVisible(false);
+  };
+
+  const openAddMemberModal = async () => {
+    setSelectedUserId(null);
+    await loadAllUsers();
+    setAddMemberModalVisible(true);
+  };
+
+  const closeAddMemberModal = () => {
+    setAddMemberModalVisible(false);
+    setSelectedUserId(null);
   };
 
   const openTaskModal = () => {
@@ -421,153 +596,149 @@ const Projects = () => {
   };
 
   const openEditTask = (task) => {
-  setEditingTask({ ...task });
-  setEditTaskModalVisible(true);
-};
+    setEditingTask({ ...task });
+    setEditTaskModalVisible(true);
+  };
 
-const closeEditTaskModal = () => {
-  setEditTaskModalVisible(false);
-  setEditingTask(null);
-};
+  const closeEditTaskModal = () => {
+    setEditTaskModalVisible(false);
+    setEditingTask(null);
+  };
 
   const handleSaveTask = async () => {
-  if (!newTask.name.trim()) {
-    showInfo("Fehler", "Bitte gib einen Task-Namen ein!");
-    return;
-  }
+    if (!newTask.name.trim()) {
+      showInfo("Fehler", "Bitte gib einen Task-Namen ein!");
+      return;
+    }
 
-  try {
-    setLoading(true);
-    const id = await AsyncStorage.getItem("user_id");
+    try {
+      setLoading(true);
+      const id = await AsyncStorage.getItem("user_id");
 
-    const response = await fetch(
-      `${API_URL}/projects/${selectedProject.id}/todos?user_id=${id}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: newTask.name,
-          priority: newTask.importance,
-          assigned_to: null
-        }),
-      }
-    );
+      const response = await fetch(
+        `${API_URL}/projects/${selectedProject.id}/todos?user_id=${id}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: newTask.name,
+            priority: newTask.importance,
+            assigned_to: null
+          }),
+        }
+      );
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (response.ok && data.status === "ok") {
-      setSelectedProject({
-        ...selectedProject,
-        tasks: [{
+      if (response.ok && data.status === "ok") {
+        const updatedTasks = [{
           id: data.todo.id,
           name: data.todo.title,
           status: data.todo.status,
           importance: data.todo.priority,
           assignedTo: data.todo.assignee?.name || null
-        }, ...selectedProject.tasks],
-      });
-      closeTaskModal();
-    } else {
-      showError("Fehler", data.detail || "Task konnte nicht erstellt werden");
-    }
-  } catch (e) {
-    showError("Fehler", "Server nicht erreichbar");
-  } finally {
-    setLoading(false);
-  }
-};
+        }, ...selectedProject.tasks];
 
-const handleUpdateTask = async () => {
-  try {
-    setLoading(true);
-    const id = await AsyncStorage.getItem("user_id");
-
-    const response = await fetch(
-      `${API_URL}/projects/${selectedProject.id}/todos/${editingTask.id}?user_id=${id}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: editingTask.name,
-          priority: editingTask.importance
-        }),
+        updateProjectEverywhere(selectedProject.id, updatedTasks);
+        closeTaskModal();
+      } else {
+        showError("Fehler", data.detail || "Task konnte nicht erstellt werden");
       }
-    );
+    } catch (e) {
+      showError("Fehler", "Server nicht erreichbar");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const data = await response.json();
+  const handleUpdateTask = async () => {
+    try {
+      setLoading(true);
+      const id = await AsyncStorage.getItem("user_id");
 
-    if (response.ok && data.status === "ok") {
-      const updatedTasks = selectedProject.tasks.map(t =>
-        t.id === editingTask.id
-          ? {
-              ...t,
-              name: data.todo.title,
-              importance: data.todo.priority,
-              status: data.todo.status
-            }
-          : t
+      const response = await fetch(
+        `${API_URL}/projects/${selectedProject.id}/todos/${editingTask.id}?user_id=${id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: editingTask.name,
+            priority: editingTask.importance
+          }),
+        }
       );
 
-      setSelectedProject({
-        ...selectedProject,
-        tasks: updatedTasks,
-        progress: calculateProgressFromTodos(updatedTasks)
-      });
+      const data = await response.json();
 
-      closeEditTaskModal();
-    } else {
-      showError("Fehler", data.detail || "Task konnte nicht aktualisiert werden");
+      if (response.ok && data.status === "ok") {
+        const updatedTasks = selectedProject.tasks.map(t =>
+          t.id === editingTask.id
+            ? {
+                ...t,
+                name: data.todo.title,
+                importance: data.todo.priority,
+                status: data.todo.status
+              }
+            : t
+        );
+
+        setSelectedProject({
+          ...selectedProject,
+          tasks: updatedTasks,
+          progress: updateProjectEverywhere(selectedProject.id, updatedTasks)
+        });
+
+        closeEditTaskModal();
+      } else {
+        showError("Fehler", data.detail || "Task konnte nicht aktualisiert werden");
+      }
+    } catch {
+      showError("Fehler", "Server nicht erreichbar");
+    } finally {
+      setLoading(false);
     }
-  } catch {
-    showError("Fehler", "Server nicht erreichbar");
-  } finally {
-    setLoading(false);
-  }
-};
-
+  };
 
   const moveTask = async (taskId, newStatus) => {
-  try {
-    const id = await AsyncStorage.getItem("user_id");
+    try {
+      const id = await AsyncStorage.getItem("user_id");
 
-    await fetch(
-      `${API_URL}/projects/${selectedProject.id}/todos/${taskId}?user_id=${id}`,
-      {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      }
-    );
+      await fetch(
+        `${API_URL}/projects/${selectedProject.id}/todos/${taskId}?user_id=${id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
 
-    setSelectedProject({
-      ...selectedProject,
-      tasks: selectedProject.tasks.map(t =>
+      const updatedTasks = selectedProject.tasks.map(t =>
         t.id === taskId ? { ...t, status: newStatus } : t
-      ),
-    });
-  } catch {
-    showError("Fehler", "Task konnte nicht verschoben werden");
-  }
-};
+      );
 
-const deleteTask = async (taskId) => {
-  try {
-    const id = await AsyncStorage.getItem("user_id");
+      updateProjectEverywhere(selectedProject.id, updatedTasks);
 
-    await fetch(
-      `${API_URL}/projects/${selectedProject.id}/todos/${taskId}?user_id=${id}`,
-      { method: "DELETE" }
-    );
+    } catch {
+      showError("Fehler", "Task konnte nicht verschoben werden");
+    }
+  };
 
-    setSelectedProject({
-      ...selectedProject,
-      tasks: selectedProject.tasks.filter(t => t.id !== taskId),
-    });
-  } catch {
-    showError("Fehler", "Task konnte nicht gelöscht werden");
-  }
-};
+  const deleteTask = async (taskId) => {
+    try {
+      const id = await AsyncStorage.getItem("user_id");
 
+      await fetch(
+        `${API_URL}/projects/${selectedProject.id}/todos/${taskId}?user_id=${id}`,
+        { method: "DELETE" }
+      );
+
+      const updatedTasks = selectedProject.tasks.filter(t => t.id !== taskId);
+      updateProjectEverywhere(selectedProject.id, updatedTasks);
+
+    } catch {
+      showError("Fehler", "Task konnte nicht gelöscht werden");
+    }
+  };
 
   const getTasksByStatus = (status) => {
     return selectedProject?.tasks.filter(task => task.status === status) || [];
@@ -590,6 +761,8 @@ const deleteTask = async (taskId) => {
       default: return importance;
     }
   };
+
+  const isAdmin = currentUserRole === "admin";
 
   if (loading && projectsList.length === 0) {
     return (
@@ -859,12 +1032,12 @@ const deleteTask = async (taskId) => {
                 </View>
 
                 <View style={styles.statCard}>
-                  <Text style={styles.statCardLabel}>📅 Abgabedatum</Text>
+                  <Text style={styles.statCardLabel}>Abgabedatum</Text>
                   <Text style={styles.statCardValue}>{formatDate(selectedProject?.dueDate || "")}</Text>
                 </View>
 
                 <View style={styles.statCard}>
-                  <Text style={styles.statCardLabel}>👥 Team Größe</Text>
+                  <Text style={styles.statCardLabel}>Team</Text>
                   <Text style={styles.statCardValue}>{selectedProject?.teamMembers} Mitglieder</Text>
                 </View>
 
@@ -877,15 +1050,39 @@ const deleteTask = async (taskId) => {
                 </View>
               </View>
 
-              {/* Action Buttons */}
-              <View style={styles.actionButtons}>
-                <TouchableOpacity style={styles.editButton} onPress={openEditProject}>
-                  <Text style={styles.editButtonText}>✏️ Bearbeiten</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteProject}>
-                  <Text style={styles.deleteButtonText}>🗑️ Löschen</Text>
-                </TouchableOpacity>
-              </View>
+              {/* Team Members Section - Nur für Admins sichtbar */}
+              {isAdmin && projectMembers.length > 0 && (
+                <View style={styles.membersSection}>
+                  <Text style={styles.membersSectionTitle}>Team Mitglieder</Text>
+                  <View style={styles.membersList}>
+                    {projectMembers.map((member, index) => {
+                      const displayName = member.user_name && member.user_name.trim() !== "" 
+                        ? member.user_name 
+                        : member.user_email;
+                      
+                      return (
+                        <View key={index} style={styles.memberItem}>
+                          <View style={styles.memberInfo}>
+                            <Text style={styles.memberIcon}>👤</Text>
+                            <View>
+                              <Text style={styles.memberName}>{displayName}</Text>
+                              {member.user_name && member.user_name.trim() !== "" && (
+                                <Text style={styles.memberEmail}>{member.user_email}</Text>
+                              )}
+                            </View>
+                          </View>
+                          <TouchableOpacity 
+                            style={styles.removeMemberButton}
+                            onPress={() => handleRemoveMember(member.user_id)}
+                          >
+                            <Text style={styles.removeMemberButtonText}>✕</Text>
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              )}
 
               {/* Tasks Section */}
               <View style={styles.tasksSection}>
@@ -905,7 +1102,7 @@ const deleteTask = async (taskId) => {
                           <View style={styles.taskItemHeader}>
                             <Text style={styles.taskItemName}>{task.name}</Text>
                             <TouchableOpacity
-                              onPress={() => openEditTask(task)}   // ⬅️ kommt gleich
+                              onPress={() => openEditTask(task)}
                               style={styles.taskIconButton}
                             >
                               <Text style={styles.taskIcon}>✏️</Text>
@@ -1018,7 +1215,87 @@ const deleteTask = async (taskId) => {
                   </View>
                 </ScrollView>
               </View>
+              {/* Action Buttons */}
+              <View style={styles.actionButtons}>
+                <TouchableOpacity style={styles.editButton} onPress={openEditProject}>
+                  <Text style={styles.editButtonText}>Bearbeiten</Text>
+                </TouchableOpacity>
+                {isAdmin && (
+                  <TouchableOpacity style={styles.addMemberButton} onPress={openAddMemberModal}>
+                    <Text style={styles.addMemberButtonText}>Mitarbeiter hinzufügen</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteProject}>
+                  <Text style={styles.deleteButtonText}>Löschen</Text>
+                </TouchableOpacity>
+              </View>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal für Mitarbeiter hinzufügen */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={addMemberModalVisible}
+        onRequestClose={closeAddMemberModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Mitarbeiter hinzufügen</Text>
+              <TouchableOpacity onPress={closeAddMemberModal} style={styles.closeButton}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Mitarbeiter auswählen</Text>
+              <ScrollView style={styles.userList}>
+                {allUsers.map((user, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.userItem,
+                      selectedUserId === user.id && styles.userItemSelected
+                    ]}
+                    onPress={() => setSelectedUserId(user.id)}
+                  >
+                    <View style={styles.userItemLeft}>
+                      <Text style={styles.userItemIcon}>👤</Text>
+                      <View>
+                        <Text style={styles.userItemName}>
+                          {user.first_name || user.last_name 
+                            ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
+                            : user.email}
+                        </Text>
+                        <Text style={styles.userItemEmail}>{user.email}</Text>
+                        <Text style={styles.userItemRole}>Rolle: {user.role}</Text>
+                      </View>
+                    </View>
+                    {selectedUserId === user.id && (
+                      <Text style={styles.userItemCheck}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.cancelButton} onPress={closeAddMemberModal}>
+                <Text style={styles.cancelButtonText}>Abbrechen</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
+                onPress={handleAddMember}
+                disabled={loading}
+              >
+                <Text style={styles.saveButtonText}>
+                  {loading ? "Wird hinzugefügt..." : "Hinzufügen"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1195,55 +1472,12 @@ const deleteTask = async (taskId) => {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Fortschritt: {selectedProject?.progress}%</Text>
-                <View style={styles.progressInputContainer}>
-                  <TouchableOpacity
-                    style={styles.progressButton}
-                    onPress={() => setSelectedProject({
-                      ...selectedProject, 
-                      progress: Math.max(0, selectedProject.progress - 5)
-                    })}
-                  >
-                    <Text style={styles.progressButtonText}>−</Text>
-                  </TouchableOpacity>
-                  <View style={styles.progressDisplay}>
-                    <View style={styles.progressBarModal}>
-                      <View style={[
-                        styles.progressFillModal, 
-                        { width: `${selectedProject?.progress}%` }
-                      ]} />
-                    </View>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.progressButton}
-                    onPress={() => setSelectedProject({
-                      ...selectedProject, 
-                      progress: Math.min(100, selectedProject.progress + 5)
-                    })}
-                  >
-                    <Text style={styles.progressButtonText}>+</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={styles.formGroup}>
                 <Text style={styles.label}>Abgabedatum *</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="YYYY-MM-DD"
                   value={selectedProject?.dueDate}
                   onChangeText={(text) => setSelectedProject({...selectedProject, dueDate: text})}
-                />
-              </View>
-
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Team Größe</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Anzahl Mitglieder"
-                  keyboardType="numeric"
-                  value={String(selectedProject?.teamMembers)}
-                  onChangeText={(text) => setSelectedProject({...selectedProject, teamMembers: parseInt(text) || 0})}
                 />
               </View>
 
@@ -1259,6 +1493,20 @@ const deleteTask = async (taskId) => {
                   <Text style={styles.saveButtonText}>
                     {loading ? "Wird gespeichert..." : "Speichern"}
                   </Text>
+                </TouchableOpacity>
+              </View>
+              {/* Action Buttons */}
+              <View style={styles.actionButtons}>
+                <TouchableOpacity style={styles.editButton} onPress={openEditProject}>
+                  <Text style={styles.editButtonText}>Bearbeiten</Text>
+                </TouchableOpacity>
+                {isAdmin && (
+                  <TouchableOpacity style={styles.addMemberButton} onPress={openAddMemberModal}>
+                    <Text style={styles.addMemberButtonText}>Mitarbeiter hinzufügen</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteProject}>
+                  <Text style={styles.deleteButtonText}>Löschen</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -1286,7 +1534,7 @@ const deleteTask = async (taskId) => {
               <Text style={styles.label}>Task Name</Text>
               <TextInput
                 style={styles.input}
-                value={editingTask?.name }
+                value={editingTask?.name ?? ""}
                 onChangeText={(text) =>
                   setEditingTask({ ...editingTask, name: text })
                 }
@@ -1341,7 +1589,6 @@ const deleteTask = async (taskId) => {
           </View>
         </View>
       </Modal>
-
 
       {/* CustomAlert verwenden */}
       <CustomAlert {...alert} onDismiss={hideAlert} />
