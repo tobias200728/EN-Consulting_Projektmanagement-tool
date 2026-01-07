@@ -290,6 +290,16 @@ export const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  allTimeTaskCardCompleted: {
+    backgroundColor: '#e8f5e9',
+    borderLeftWidth: 4,
+    borderLeftColor: '#28a745',
+  },
+  allTimeTaskCardInProgress: {
+    backgroundColor: '#fff3e0',
+    borderLeftWidth: 4,
+    borderLeftColor: '#ff9800',
+  },
   allTimeTaskHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -444,6 +454,10 @@ export const styles = StyleSheet.create({
     backgroundColor: '#dc3545',
     borderColor: '#dc3545',
   },
+  priorityButtonOrange: {
+    backgroundColor: '#ff9800',
+    borderColor: '#ff9800',
+  },
   priorityButtonText: {
     fontSize: 13,
     color: '#666',
@@ -507,6 +521,35 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: 'white',
+  },
+  
+  // ✅ NEU: Quick Complete Button
+  completeButton: {
+    backgroundColor: '#28a745',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  completeButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: 'white',
+  },
+  
+  // Completed Status Info
+  completedStatusInfo: {
+    backgroundColor: '#e8f5e9',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: '#28a745',
+  },
+  completedStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#28a745',
   },
 
   // Loading

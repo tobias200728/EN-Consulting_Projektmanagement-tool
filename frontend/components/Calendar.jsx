@@ -89,7 +89,7 @@ const Calendar = () => {
     }
   };
 
-  // Tasks vom Backend laden
+  // ✅ KORRIGIERT: Tasks laden - Daten bleiben unverändert vom Backend
   const loadTasks = async () => {
     try {
       setLoading(true);
@@ -97,6 +97,7 @@ const Calendar = () => {
       const data = await response.json();
 
       if (response.ok && data.status === "ok") {
+        console.log("📥 Tasks vom Backend erhalten:", data.todos);
         setTasks(data.todos || []);
       } else {
         showError("Fehler", data.detail || "Tasks konnten nicht geladen werden");
@@ -259,9 +260,23 @@ const Calendar = () => {
     }
   };
 
-  // Tasks nach Datum gruppieren
+  // ✅ KORRIGIERT: Tasks nach Datum gruppieren - einfach ersten 10 Zeichen vergleichen
   const getTasksByDate = (date) => {
-    return tasks.filter(task => task.due_date === date);
+    console.log("Suche Tasks für Datum:", date);
+    console.log("Alle Tasks:", tasks);
+    
+    const filtered = tasks.filter(task => {
+      if (!task.due_date) return false;
+      
+      // Nimm einfach die ersten 10 Zeichen (YYYY-MM-DD)
+      const taskDate = task.due_date.substring(0, 10);
+      console.log(`Vergleiche: "${taskDate}" === "${date}" ? ${taskDate === date}`);
+      
+      return taskDate === date;
+    });
+    
+    console.log(`✅ Gefundene Tasks für ${date}:`, filtered.length);
+    return filtered;
   };
 
   // Alle Tasks ohne Datum (für All-Time View)
@@ -287,7 +302,12 @@ const Calendar = () => {
   };
 
   const openTaskDetail = (task) => {
-    setSelectedTask({...task}); // Kopie erstellen für Bearbeitung
+    // Kopie erstellen für Bearbeitung und Datum ohne Uhrzeit
+    const taskCopy = {
+      ...task,
+      due_date: task.due_date ? task.due_date.substring(0, 10) : ""
+    };
+    setSelectedTask(taskCopy);
     setTaskDetailModalVisible(true);
   };
 
@@ -420,68 +440,87 @@ const Calendar = () => {
                               <Text style={styles.noTasksText}>Keine Tasks</Text>
                             </View>
                           ) : (
-                            dayTasks.map((task, taskIndex) => (
-                              <TouchableOpacity
-                                key={taskIndex}
-                                style={[
-                                  styles.taskCard,
-                                  { backgroundColor: '#fff', borderLeftColor: getPriorityColor(task.priority) }
-                                ]}
-                                onPress={() => openTaskDetail(task)}
-                              >
-                                <View style={styles.taskHeader}>
-                                  <Text style={styles.taskIcon}>
-                                    {task.status === 'completed' ? '✓' : '⏱'}
-                                  </Text>
-                                  <Text style={styles.taskTitle} numberOfLines={2}>
-                                    {task.title}
-                                  </Text>
-                                </View>
-
-                                {task.description && (
-                                  <Text style={styles.taskDescription} numberOfLines={2}>
-                                    {task.description}
-                                  </Text>
-                                )}
-
-                                <View style={styles.taskPriority}>
-                                  <View style={[
-                                    styles.priorityBadge,
-                                    { backgroundColor: getPriorityColor(task.priority) }
-                                  ]}>
-                                    <Text style={styles.priorityBadgeText}>
-                                      {getPriorityLabel(task.priority)}
+                            dayTasks.map((task, taskIndex) => {
+                              // Bestimme die Hintergrundfarbe basierend auf dem Status
+                              let taskBackgroundColor = '#fff'; // Standard: Weiß
+                              let taskBorderColor = getPriorityColor(task.priority);
+                              
+                              if (task.status === 'completed') {
+                                taskBackgroundColor = '#e8f5e9'; // Hellgrün
+                                taskBorderColor = '#28a745'; // Grün
+                              } else if (task.status === 'in-progress') {
+                                taskBackgroundColor = '#fff3e0'; // Hellorange
+                                taskBorderColor = '#ff9800'; // Orange
+                              }
+                              
+                              return (
+                                <TouchableOpacity
+                                  key={taskIndex}
+                                  style={[
+                                    styles.taskCard,
+                                    { 
+                                      backgroundColor: taskBackgroundColor, 
+                                      borderLeftColor: taskBorderColor,
+                                      borderLeftWidth: 4
+                                    }
+                                  ]}
+                                  onPress={() => openTaskDetail(task)}
+                                >
+                                  <View style={styles.taskHeader}>
+                                    <Text style={styles.taskIcon}>
+                                      {task.status === 'completed' ? '✓' : 
+                                       task.status === 'in-progress' ? '⏱' : '⏱'}
+                                    </Text>
+                                    <Text style={styles.taskTitle} numberOfLines={2}>
+                                      {task.title}
                                     </Text>
                                   </View>
-                                </View>
 
-                                <View style={styles.taskActions}>
-                                  {/* Drag & Drop Buttons */}
-                                  {index > 0 && (
-                                    <TouchableOpacity 
-                                      style={styles.moveButton}
-                                      onPress={(e) => {
-                                        e.stopPropagation();
-                                        handleMoveTask(task, weekDays[index - 1].fullDate);
-                                      }}
-                                    >
-                                      <Text style={styles.moveButtonText}>←</Text>
-                                    </TouchableOpacity>
+                                  {task.description && (
+                                    <Text style={styles.taskDescription} numberOfLines={2}>
+                                      {task.description}
+                                    </Text>
                                   )}
-                                  {index < weekDays.length - 1 && (
-                                    <TouchableOpacity 
-                                      style={styles.moveButton}
-                                      onPress={(e) => {
-                                        e.stopPropagation();
-                                        handleMoveTask(task, weekDays[index + 1].fullDate);
-                                      }}
-                                    >
-                                      <Text style={styles.moveButtonText}>→</Text>
-                                    </TouchableOpacity>
-                                  )}
-                                </View>
-                              </TouchableOpacity>
-                            ))
+
+                                  <View style={styles.taskPriority}>
+                                    <View style={[
+                                      styles.priorityBadge,
+                                      { backgroundColor: getPriorityColor(task.priority) }
+                                    ]}>
+                                      <Text style={styles.priorityBadgeText}>
+                                        {getPriorityLabel(task.priority)}
+                                      </Text>
+                                    </View>
+                                  </View>
+
+                                  <View style={styles.taskActions}>
+                                    {/* Drag & Drop Buttons */}
+                                    {index > 0 && (
+                                      <TouchableOpacity 
+                                        style={styles.moveButton}
+                                        onPress={(e) => {
+                                          e.stopPropagation();
+                                          handleMoveTask(task, weekDays[index - 1].fullDate);
+                                        }}
+                                      >
+                                        <Text style={styles.moveButtonText}>←</Text>
+                                      </TouchableOpacity>
+                                    )}
+                                    {index < weekDays.length - 1 && (
+                                      <TouchableOpacity 
+                                        style={styles.moveButton}
+                                        onPress={(e) => {
+                                          e.stopPropagation();
+                                          handleMoveTask(task, weekDays[index + 1].fullDate);
+                                        }}
+                                      >
+                                        <Text style={styles.moveButtonText}>→</Text>
+                                      </TouchableOpacity>
+                                    )}
+                                  </View>
+                                </TouchableOpacity>
+                              );
+                            })
                           )}
                         </View>
                       </View>
@@ -510,50 +549,61 @@ const Calendar = () => {
               </View>
             ) : (
               <View style={styles.allTasksList}>
-                {tasks.map((task, index) => (
-                  <TouchableOpacity 
-                    key={index} 
-                    style={styles.allTimeTaskCard}
-                    onPress={() => openTaskDetail(task)}
-                  >
-                    <View style={styles.allTimeTaskHeader}>
-                      <View style={styles.allTimeTaskLeft}>
-                        <Text style={styles.allTimeTaskIcon}>
-                          {task.status === 'completed' ? '✓' : '⏱'}
-                        </Text>
-                        <View style={styles.allTimeTaskInfo}>
-                          <Text style={styles.allTimeTaskTitle}>{task.title}</Text>
-                          {task.description && (
-                            <Text style={styles.allTimeTaskDescription} numberOfLines={2}>
-                              {task.description}
-                            </Text>
-                          )}
+                {tasks.map((task, index) => {
+                  // Bestimme die Hintergrundfarbe basierend auf dem Status
+                  let cardStyle = styles.allTimeTaskCard;
+                  if (task.status === 'completed') {
+                    cardStyle = [styles.allTimeTaskCard, styles.allTimeTaskCardCompleted];
+                  } else if (task.status === 'in-progress') {
+                    cardStyle = [styles.allTimeTaskCard, styles.allTimeTaskCardInProgress];
+                  }
+                  
+                  return (
+                    <TouchableOpacity 
+                      key={index} 
+                      style={cardStyle}
+                      onPress={() => openTaskDetail(task)}
+                    >
+                      <View style={styles.allTimeTaskHeader}>
+                        <View style={styles.allTimeTaskLeft}>
+                          <Text style={styles.allTimeTaskIcon}>
+                            {task.status === 'completed' ? '✓' : 
+                             task.status === 'in-progress' ? '⏱' : '⏱'}
+                          </Text>
+                          <View style={styles.allTimeTaskInfo}>
+                            <Text style={styles.allTimeTaskTitle}>{task.title}</Text>
+                            {task.description && (
+                              <Text style={styles.allTimeTaskDescription} numberOfLines={2}>
+                                {task.description}
+                              </Text>
+                            )}
+                          </View>
                         </View>
                       </View>
-                    </View>
 
-                    <View style={styles.allTimeTaskFooter}>
-                      <View style={[
-                        styles.allTimePriorityBadge,
-                        { backgroundColor: getPriorityColor(task.priority) }
-                      ]}>
-                        <Text style={styles.allTimePriorityText}>
-                          {getPriorityLabel(task.priority)}
-                        </Text>
+                      <View style={styles.allTimeTaskFooter}>
+                        <View style={[
+                          styles.allTimePriorityBadge,
+                          { backgroundColor: getPriorityColor(task.priority) }
+                        ]}>
+                          <Text style={styles.allTimePriorityText}>
+                            {getPriorityLabel(task.priority)}
+                          </Text>
+                        </View>
+                        {task.due_date && (
+                          <Text style={styles.allTimeDueDate}>
+                            📅 Fällig: {new Date(task.due_date).toLocaleDateString('de-DE')}
+                          </Text>
+                        )}
+                        {!task.due_date && (
+                          <Text style={styles.allTimeNoDueDate}>
+                            📅 Kein Fälligkeitsdatum
+                          </Text>
+                        )}
                       </View>
-                      {task.due_date && (
-                        <Text style={styles.allTimeDueDate}>
-                          📅 Fällig: {new Date(task.due_date).toLocaleDateString('de-DE')}
-                        </Text>
-                      )}
-                      {!task.due_date && (
-                        <Text style={styles.allTimeNoDueDate}>
-                          📅 Kein Fälligkeitsdatum
-                        </Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             )}
           </View>
@@ -730,7 +780,7 @@ const Calendar = () => {
                     <TouchableOpacity
                       style={[
                         styles.priorityButton,
-                        selectedTask.status === "in-progress" && styles.priorityButtonMedium
+                        selectedTask.status === "in-progress" && styles.priorityButtonOrange
                       ]}
                       onPress={() => setSelectedTask({...selectedTask, status: "in-progress"})}
                     >
@@ -739,19 +789,12 @@ const Calendar = () => {
                         selectedTask.status === "in-progress" && styles.priorityButtonTextActive
                       ]}>In Progress</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.priorityButton,
-                        selectedTask.status === "completed" && styles.priorityButtonLow
-                      ]}
-                      onPress={() => setSelectedTask({...selectedTask, status: "completed"})}
-                    >
-                      <Text style={[
-                        styles.priorityButtonText,
-                        selectedTask.status === "completed" && styles.priorityButtonTextActive
-                      ]}>Erledigt</Text>
-                    </TouchableOpacity>
                   </View>
+                  {selectedTask.status === "completed" && (
+                    <View style={styles.completedStatusInfo}>
+                      <Text style={styles.completedStatusText}>✓ Task ist erledigt</Text>
+                    </View>
+                  )}
                 </View>
 
                 <View style={styles.formGroup}>
@@ -805,6 +848,26 @@ const Calendar = () => {
                     onChangeText={(text) => setSelectedTask({...selectedTask, due_date: text})}
                   />
                 </View>
+
+                {/* Quick Action: Erledigt markieren */}
+                {selectedTask.status !== "completed" && (
+                  <TouchableOpacity 
+                    style={styles.completeButton}
+                    onPress={async () => {
+                      const success = await handleUpdateTask(selectedTask.id, {
+                        status: "completed"
+                      });
+                      if (success) {
+                        showSuccess("Erfolg", "Task als erledigt markiert!", () => {
+                          setTaskDetailModalVisible(false);
+                          setSelectedTask(null);
+                        });
+                      }
+                    }}
+                  >
+                    <Text style={styles.completeButtonText}>✓ Als erledigt markieren</Text>
+                  </TouchableOpacity>
+                )}
 
                 <View style={styles.modalButtons}>
                   <TouchableOpacity 
