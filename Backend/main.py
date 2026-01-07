@@ -9,8 +9,7 @@ import models
 from database import engine
 
 # Route Imports
-from routes import users, auth, projects, project_members, project_todos, user_todos
-
+from routes import users, auth, projects, project_members, project_todos, user_todos, contracts
 # Erstelle Datenbank-Tabellen
 models.Base.metadata.create_all(bind=engine)
 
@@ -45,6 +44,7 @@ app.include_router(projects.router)
 app.include_router(project_members.router)
 app.include_router(project_todos.router)
 app.include_router(user_todos.router)
+app.include_router(contracts.router)
 
 # Root Endpoint
 @app.get("/")
