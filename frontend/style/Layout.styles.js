@@ -36,7 +36,7 @@ export const styles = StyleSheet.create({
 
   menuContainer: {
     paddingTop: 20,
-    paddingBottom: 90, // Platz für Avatar
+    paddingBottom: 90,
   },
 
   sidebarItem: {
@@ -101,6 +101,14 @@ export const styles = StyleSheet.create({
     backgroundColor: '#2b5fff',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+
+  // ✅ NEU: Profilbild Style
+  userAvatarImage: {
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
   },
 
   userAvatarText: {
@@ -110,12 +118,20 @@ export const styles = StyleSheet.create({
   userInfoContainer: {
     justifyContent: 'center',
     overflow: 'hidden',
+    paddingLeft: 5,
   },
 
   userName: {
     fontSize: 14,
     fontWeight: '600',
     color: 'white',
+  },
+
+  // ✅ NEU: User-Rolle unter dem Namen
+  userRole: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 2,
   },
 
   overlay: {

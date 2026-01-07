@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Layout from "./Layout";
 import CustomAlert from "./CustomAlert";
 import useAlert from "../hooks/useAlert";
+import useAuth from "../hooks/useAuth";
 import { styles } from "../style/Projects.styles";
 
 const API_URL = "http://127.0.0.1:8000";
@@ -43,6 +44,17 @@ const Projects = () => {
 
   // Alert Hook verwenden
   const { alert, showSuccess, showError, showInfo, showConfirm, hideAlert } = useAlert();
+
+  // Auth Hook verwenden für Berechtigungen
+  const { 
+    isAdmin, 
+    isEmployee, 
+    isGuest,
+    canCreateProject, 
+    canEditProject, 
+    canDeleteProject, 
+    canManageProjectMembers 
+  } = useAuth();
 
   // User-ID beim Laden holen
   useEffect(() => {
@@ -762,8 +774,6 @@ const Projects = () => {
     }
   };
 
-  const isAdmin = currentUserRole === "admin";
-
   if (loading && projectsList.length === 0) {
     return (
       <Layout>
@@ -781,11 +791,17 @@ const Projects = () => {
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>Projekte</Text>
-            <Text style={styles.subtitle}>Verwalte und überwache alle Tunnelbau- und Wartungsprojekte</Text>
+            <Text style={styles.subtitle}>
+              {isAdmin 
+                ? 'Verwalte und überwache alle Projekte' 
+                : 'Deine zugewiesenen Projekte'}
+            </Text>
           </View>
-          <TouchableOpacity style={styles.newButton} onPress={openModal}>
-            <Text style={styles.newButtonText}>+ Neues Projekt</Text>
-          </TouchableOpacity>
+          {canCreateProject && (
+            <TouchableOpacity style={styles.newButton} onPress={openModal}>
+              <Text style={styles.newButtonText}>+ Neues Projekt</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.controls}>
@@ -1071,12 +1087,14 @@ const Projects = () => {
                               )}
                             </View>
                           </View>
-                          <TouchableOpacity 
-                            style={styles.removeMemberButton}
-                            onPress={() => handleRemoveMember(member.user_id)}
-                          >
-                            <Text style={styles.removeMemberButtonText}>✕</Text>
-                          </TouchableOpacity>
+                          {canManageProjectMembers && (
+                            <TouchableOpacity 
+                              style={styles.removeMemberButton}
+                              onPress={() => handleRemoveMember(member.user_id)}
+                            >
+                              <Text style={styles.removeMemberButtonText}>✕</Text>
+                            </TouchableOpacity>
+                          )}
                         </View>
                       );
                     })}
@@ -1215,19 +1233,24 @@ const Projects = () => {
                   </View>
                 </ScrollView>
               </View>
-              {/* Action Buttons */}
+
+              {/* Action Buttons - Nur für berechtigte User */}
               <View style={styles.actionButtons}>
-                <TouchableOpacity style={styles.editButton} onPress={openEditProject}>
-                  <Text style={styles.editButtonText}>Bearbeiten</Text>
-                </TouchableOpacity>
-                {isAdmin && (
+                {canEditProject && (
+                  <TouchableOpacity style={styles.editButton} onPress={openEditProject}>
+                    <Text style={styles.editButtonText}>Bearbeiten</Text>
+                  </TouchableOpacity>
+                )}
+                {canManageProjectMembers && (
                   <TouchableOpacity style={styles.addMemberButton} onPress={openAddMemberModal}>
                     <Text style={styles.addMemberButtonText}>Mitarbeiter hinzufügen</Text>
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteProject}>
-                  <Text style={styles.deleteButtonText}>Löschen</Text>
-                </TouchableOpacity>
+                {canDeleteProject && (
+                  <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteProject}>
+                    <Text style={styles.deleteButtonText}>Löschen</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </ScrollView>
           </View>
@@ -1493,20 +1516,6 @@ const Projects = () => {
                   <Text style={styles.saveButtonText}>
                     {loading ? "Wird gespeichert..." : "Speichern"}
                   </Text>
-                </TouchableOpacity>
-              </View>
-              {/* Action Buttons */}
-              <View style={styles.actionButtons}>
-                <TouchableOpacity style={styles.editButton} onPress={openEditProject}>
-                  <Text style={styles.editButtonText}>Bearbeiten</Text>
-                </TouchableOpacity>
-                {isAdmin && (
-                  <TouchableOpacity style={styles.addMemberButton} onPress={openAddMemberModal}>
-                    <Text style={styles.addMemberButtonText}>Mitarbeiter hinzufügen</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteProject}>
-                  <Text style={styles.deleteButtonText}>Löschen</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>

@@ -1,22 +1,99 @@
-import React, { useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Animated } from 'react-native';
+import React, { useRef, useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Animated, Image } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { styles } from '../style/Layout.styles';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import useAuth from '../hooks/useAuth';
+
+const API_URL = "http://127.0.0.1:8000";
 
 export default function Layout({ children }) {
   const [open, setOpen] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const navigation = useNavigation();
   const route = useRoute();
+  const { userRole, isAdmin, isEmployee, userId } = useAuth();
+  
+  // State für User-Daten
+  const [userFirstName, setUserFirstName] = useState('');
+  const [profilePicture, setProfilePicture] = useState(null);
 
   const menuItems = [
-    { icon: "view-dashboard-outline", iconFamily: "MaterialCommunityIcons", screen: "Dashboard", label: "Dashboard" },
-    { icon: "hammer-wrench", iconFamily: "MaterialCommunityIcons", screen: "Projects", label: "Projects" },
-    { icon: "calendar-month", iconFamily: "MaterialCommunityIcons", screen: "Calendar", label: "Calendar" },
-    { icon: "document-text-outline", iconFamily: "Ionicons", screen: "Documents", label: "Documents" },
+    { 
+      icon: "view-dashboard-outline", 
+      iconFamily: "MaterialCommunityIcons", 
+      screen: "Dashboard", 
+      label: "Dashboard",
+      roles: ['admin', 'employee', 'guest']
+    },
+    { 
+      icon: "hammer-wrench", 
+      iconFamily: "MaterialCommunityIcons", 
+      screen: "Projects", 
+      label: "Projects",
+      roles: ['admin', 'employee', 'guest']
+    },
+    { 
+      icon: "calendar-month", 
+      iconFamily: "MaterialCommunityIcons", 
+      screen: "Calendar", 
+      label: "Calendar",
+      roles: ['admin', 'employee']
+    },
+    { 
+      icon: "document-text-outline", 
+      iconFamily: "Ionicons", 
+      screen: "Documents", 
+      label: "Documents",
+      roles: ['admin', 'employee']
+    },
   ];
+
+  // Lade User-Daten beim Mounten
+  useEffect(() => {
+    loadUserData();
+  }, [userId]);
+
+  const loadUserData = async () => {
+    try {
+      // Hole User-ID
+      const id = await AsyncStorage.getItem('user_id');
+      if (!id) return;
+
+      // Versuche zuerst aus AsyncStorage zu laden (schneller)
+      const cachedFirstName = await AsyncStorage.getItem('user_first_name');
+      if (cachedFirstName) {
+        setUserFirstName(cachedFirstName);
+      }
+
+      // Dann vom Backend laden (aktuellste Daten + Profilbild)
+      const response = await fetch(`${API_URL}/getuserbyID/${id}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        // Setze Vornamen
+        const firstName = data.first_name || data.email?.split('@')[0] || 'User';
+        setUserFirstName(firstName);
+        
+        // Update AsyncStorage
+        await AsyncStorage.setItem('user_first_name', firstName);
+
+        // Setze Profilbild wenn vorhanden
+        if (data.profile_picture) {
+          setProfilePicture(data.profile_picture);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading user data in Layout:', error);
+    }
+  };
+
+  // Filtere Menü-Items basierend auf Rolle
+  const visibleMenuItems = menuItems.filter(item => 
+    item.roles.includes(userRole)
+  );
 
   const toggleMenu = () => {
     setOpen(!open);
@@ -65,7 +142,7 @@ export default function Layout({ children }) {
           </TouchableOpacity>
 
           <View style={styles.menuContainer}>
-            {menuItems.map((item, index) => {
+            {visibleMenuItems.map((item, index) => {
               const isActive = route.name === item.screen;
               return (
                 <TouchableOpacity
@@ -108,7 +185,14 @@ export default function Layout({ children }) {
         >
           <View style={styles.userAvatarContainer}>
             <View style={styles.userAvatar}>
-              <Text style={styles.userAvatarText}>👤</Text>
+              {profilePicture ? (
+                <Image
+                  source={{ uri: `data:image/jpeg;base64,${profilePicture}` }}
+                  style={styles.userAvatarImage}
+                />
+              ) : (
+                <Text style={styles.userAvatarText}>👤</Text>
+              )}
             </View>
           </View>
 
@@ -124,7 +208,12 @@ export default function Layout({ children }) {
               },
             ]}
           >
-            <Text style={styles.userName}>User</Text>
+            <Text style={styles.userName} numberOfLines={1}>
+              {userFirstName}
+            </Text>
+            <Text style={styles.userRole}>
+              {isAdmin ? 'Admin' : isEmployee ? 'Employee' : 'Guest'}
+            </Text>
           </Animated.View>
         </TouchableOpacity>
       </Animated.View>
