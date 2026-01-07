@@ -7,7 +7,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 
 export default function Layout({ children }) {
   const [open, setOpen] = useState(false);
-  const slideAnim = useRef(new Animated.Value(0)).current; // 0 = closed, 1 = open
+  const slideAnim = useRef(new Animated.Value(0)).current;
   const navigation = useNavigation();
   const route = useRoute();
 
@@ -35,21 +35,18 @@ export default function Layout({ children }) {
     navigation.navigate('Profile');
   };
 
-  // Interpolate width for sidebar
   const sidebarWidth = slideAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [70, 250], // 70px (icons only) to 250px (full sidebar)
+    outputRange: [70, 250],
   });
 
   const renderIcon = (iconName, iconFamily) => {
     const color = "white";
     const iconSize = 24;
-    
-    switch(iconFamily) {
+
+    switch (iconFamily) {
       case "Ionicons":
         return <Ionicons name={iconName} size={iconSize} color={color} />;
-      case "MaterialCommunityIcons":
-        return <MaterialCommunityIcons name={iconName} size={iconSize} color={color} />;
       default:
         return <MaterialCommunityIcons name={iconName} size={iconSize} color={color} />;
     }
@@ -57,18 +54,16 @@ export default function Layout({ children }) {
 
   return (
     <View style={styles.container}>
-      {/* Animated Sidebar */}
+      {/* Sidebar */}
       <Animated.View style={[styles.sidebar, { width: sidebarWidth }]}>
-        {/* Top Section: Burger + Navigation */}
+        {/* Top */}
         <View>
-          {/* Burger Menu Button */}
           <TouchableOpacity style={styles.burgerButton} onPress={toggleMenu}>
             <View style={{ width: '100%', paddingLeft: 20 }}>
               <Text style={styles.burgerIcon}>☰</Text>
             </View>
           </TouchableOpacity>
 
-          {/* Navigation Items */}
           <View style={styles.menuContainer}>
             {menuItems.map((item, index) => {
               const isActive = route.name === item.screen;
@@ -82,8 +77,9 @@ export default function Layout({ children }) {
                   onPress={() => handleIconPress(item.screen)}
                 >
                   <View style={styles.iconContainer}>
-                    {renderIcon(item.icon, item.iconFamily, isActive)}
+                    {renderIcon(item.icon, item.iconFamily)}
                   </View>
+
                   <Animated.View
                     style={[
                       styles.textContainer,
@@ -104,17 +100,18 @@ export default function Layout({ children }) {
           </View>
         </View>
 
-        {/* User Avatar at Bottom - Now clickable */}
-        <TouchableOpacity 
+        {/* User Section */}
+        <TouchableOpacity
           style={styles.userSection}
           onPress={handleProfilePress}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
         >
           <View style={styles.userAvatarContainer}>
             <View style={styles.userAvatar}>
               <Text style={styles.userAvatarText}>👤</Text>
             </View>
           </View>
+
           <Animated.View
             style={[
               styles.userInfoContainer,
@@ -127,14 +124,14 @@ export default function Layout({ children }) {
               },
             ]}
           >
-            <Text style={styles.userName}> User</Text>
+            <Text style={styles.userName}>User</Text>
           </Animated.View>
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Overlay - Only visible when sidebar is open */}
+      {/* Overlay */}
       {open && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.overlay}
           onPress={toggleMenu}
           activeOpacity={1}

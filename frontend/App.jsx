@@ -6,7 +6,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Login from './components/Login';
 import ForgotPassword from './components/Forgotpassword';
 import TwoFA from './components/TwoFa';
-import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Projects from './components/Projects';
 import Calendar from './components/Calendar';
@@ -18,17 +17,17 @@ const Stack = createNativeStackNavigator();
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{headerShown: false}}>
-        <Stack.Screen name="Login" component={Login} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
-        <Stack.Screen name="TwoFA" component={TwoFA} />
-        <Stack.Screen name="Layout" component={Layout} />
-        <Stack.Screen name="Dashboard" component={Dashboard} />
-        <Stack.Screen name="Projects" component={Projects} />
-        <Stack.Screen name="Calendar" component={Calendar} />
-        <Stack.Screen name="Documents" component={Documents} />
-        <Stack.Screen name="Profile" component={Profile} />
-      </Stack.Navigator>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Login" component={Login} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+      <Stack.Screen name="TwoFA" component={TwoFA} />
+
+      <Stack.Screen name="Dashboard" component={Dashboard} />
+      <Stack.Screen name="Projects" component={Projects} />
+      <Stack.Screen name="Calendar" component={Calendar} />
+      <Stack.Screen name="Documents" component={Documents} />
+      <Stack.Screen name="Profile" component={Profile} />
+    </Stack.Navigator>
       <StatusBar style="auto" />
     </NavigationContainer>
   );

@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Float, Date
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Float, Date, LargeBinary
 from database import Base
 from datetime import datetime
 from sqlalchemy.orm import relationship
@@ -17,6 +17,9 @@ class Users(Base):
     
     # Role: "admin", "employee", "guest"
     role = Column(String(50), default='employee')
+
+    # Profile Picture (bytea in PostgreSQL)
+    profile_picture = Column(LargeBinary, nullable=True)
 
     # 2FA
     twofa_enabled = Column(Boolean, default=False)
