@@ -64,7 +64,12 @@ const useAlert = () => {
   };
 
   const showError = (title, message, onConfirm = null) => {
-    showAlert('error', title, message, { onConfirm });
+    // ✅ Stelle sicher, dass message immer ein String ist
+    const messageString = typeof message === 'object' 
+      ? JSON.stringify(message) 
+      : String(message);
+    
+    showAlert('error', title, messageString, { onConfirm });
   };
 
   const showInfo = (title, message, onConfirm = null) => {

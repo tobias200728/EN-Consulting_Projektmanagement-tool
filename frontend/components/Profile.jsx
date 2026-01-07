@@ -291,68 +291,86 @@ const Profile = ({ navigation }) => {
 
   // NEU: Profilbild Upload
   const handleUploadProfilePicture = async () => {
-    try {
-      // Dynamischer Import von expo-image-picker
-      const ImagePicker = await import('expo-image-picker');
-      
-      // Frage nach Berechtigung
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (status !== 'granted') {
-        showError('Berechtigung verweigert', 'Bitte erlaube den Zugriff auf deine Fotos in den Einstellungen');
-        return;
-      }
-      
-      // Öffne Image Picker
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.8,
-      });
-      
-      if (result.canceled) return;
-      
-      // Erstelle FormData
-      const formData = new FormData();
-      const uri = result.assets[0].uri;
-      const fileType = uri.split('.').pop();
-      
-      formData.append('file', {
-        uri: uri,
-        type: `image/${fileType}`,
-        name: `profile.${fileType}`,
-      });
-      
-      // Upload
-      setLoading(true);
-      const response = await fetch(`${API_URL}/upload-profile-picture/${userId}`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok && data.status === 'ok') {
-        showSuccess('Erfolg', 'Profilbild wurde erfolgreich hochgeladen');
-        // Aktualisiere Profilbild im State
-        setProfileData(prev => ({
-          ...prev,
-          profilePicture: data.profile_picture
-        }));
-      } else {
-        showError('Fehler', data.detail || 'Upload fehlgeschlagen');
-      }
-    } catch (error) {
-      console.error('Error uploading profile picture:', error);
-      showError('Fehler', 'Verbindung zum Server fehlgeschlagen');
-    } finally {
-      setLoading(false);
+  try {
+    // Dynamischer Import von expo-image-picker
+    const ImagePicker = await import('expo-image-picker');
+    
+    // Frage nach Berechtigung
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (status !== 'granted') {
+      showError('Berechtigung verweigert', 'Bitte erlaube den Zugriff auf deine Fotos in den Einstellungen');
+      return;
     }
-  };
+    
+    // Öffne Image Picker
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    
+    if (result.canceled) return;
+    
+    setLoading(true);
+    
+    const uri = result.assets[0].uri;
+    
+    // ✅ FIX: Für Web müssen wir das Bild als Base64 hochladen
+    // Hole das Bild als Blob
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    
+    // Erstelle FormData mit korrektem File-Objekt
+    const formData = new FormData();
+    const filename = `profile_${userId}_${Date.now()}.jpg`;
+    
+    // Erstelle ein echtes File-Objekt aus dem Blob
+    const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
+    formData.append('file', file);
+    
+    // Upload
+    const uploadResponse = await fetch(`${API_URL}/upload-profile-picture/${userId}`, {
+      method: 'POST',
+      body: formData,
+      // KEIN headers!
+    });
+    
+    const data = await uploadResponse.json();
+    console.log('Upload Response:', data); // ✅ Debug
+    
+    if (uploadResponse.ok && data.status === 'ok') {
+      showSuccess('Erfolg', 'Profilbild wurde erfolgreich hochgeladen');
+      // Aktualisiere Profilbild im State
+      setProfileData(prev => ({
+        ...prev,
+        profilePicture: data.profile_picture
+      }));
+    } else {
+      // ✅ FIX: Fehlerbehandlung für Validierungsfehler
+      let errorMessage = 'Upload fehlgeschlagen';
+      
+      if (data.detail) {
+        if (Array.isArray(data.detail)) {
+          // Pydantic Validierungsfehler
+          errorMessage = data.detail.map(err => err.msg).join(', ');
+        } else if (typeof data.detail === 'string') {
+          errorMessage = data.detail;
+        } else {
+          errorMessage = JSON.stringify(data.detail);
+        }
+      }
+      
+      showError('Fehler', errorMessage);
+    }
+  } catch (error) {
+    console.error('Error uploading profile picture:', error);
+    showError('Fehler', 'Verbindung zum Server fehlgeschlagen: ' + error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // NEU: Profilbild löschen
   const handleDeleteProfilePicture = async () => {
