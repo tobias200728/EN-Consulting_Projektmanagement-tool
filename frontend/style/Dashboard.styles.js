@@ -236,4 +236,38 @@ export const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#0a0f33',
   },
+  taskStatusContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  taskPriorityText: {
+    fontSize: 11,
+    color: '#666',
+    fontWeight: '500',
+  },
+  emptyState: {
+    backgroundColor: 'white',
+    padding: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    marginTop: 15,
+    fontSize: 16,
+    color: '#666',
+  },
 });
