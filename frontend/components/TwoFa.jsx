@@ -92,7 +92,7 @@ export default function TwoFA({ route, navigation }) {
 
         navigation.navigate("Dashboard");
       } else {
-        showError("Fehler", data.detail || "Ungültiger 2FA-Code");
+        showError("Fehler", "Ungültiger 2FA-Code");
       }
     } catch (error) {
       console.log("2FA Error:", error);

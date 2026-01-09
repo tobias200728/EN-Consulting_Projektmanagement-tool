@@ -100,7 +100,7 @@ const Calendar = () => {
         console.log("📥 Tasks vom Backend erhalten:", data.todos);
         setTasks(data.todos || []);
       } else {
-        showError("Fehler", data.detail || "Tasks konnten nicht geladen werden");
+        showError("Fehler", "Tasks konnten nicht geladen werden");
       }
     } catch (error) {
       console.error("Error loading tasks:", error);
@@ -144,7 +144,7 @@ const Calendar = () => {
           loadTasks();
         });
       } else {
-        showError("Fehler", data.detail || "Task konnte nicht erstellt werden");
+        showError("Fehler", "Task konnte nicht erstellt werden");
       }
     } catch (error) {
       console.error("Error creating task:", error);
@@ -173,7 +173,7 @@ const Calendar = () => {
         loadTasks(); // Tasks neu laden
         return true;
       } else {
-        showError("Fehler", data.detail || "Task konnte nicht aktualisiert werden");
+        showError("Fehler", "Task konnte nicht aktualisiert werden");
         return false;
       }
     } catch (error) {
@@ -207,7 +207,7 @@ const Calendar = () => {
               loadTasks();
             });
           } else {
-            showError("Fehler", data.detail || "Task konnte nicht gelöscht werden");
+            showError("Fehler", "Task konnte nicht gelöscht werden");
           }
         } catch (error) {
           console.error("Error deleting task:", error);
@@ -892,12 +892,7 @@ const Calendar = () => {
         </View>
       </Modal>
 
-      {/* Loading Overlay */}
-      {loading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#2b5fff" />
-        </View>
-      )}
+    
 
       {/* CustomAlert */}
       <CustomAlert {...alert} onDismiss={hideAlert} />

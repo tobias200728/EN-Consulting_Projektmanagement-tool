@@ -142,7 +142,7 @@ const Profile = ({ navigation }) => {
       if (response.ok && data.status === 'ok') {
         showSuccess('Erfolg', 'Profil wurde erfolgreich gespeichert');
       } else {
-        showError('Fehler', data.detail || 'Profil konnte nicht gespeichert werden');
+        showError('Fehler', 'Profil konnte nicht gespeichert werden');
       }
     } catch (error) {
       console.error('Error saving profile:', error);
@@ -197,7 +197,7 @@ const Profile = ({ navigation }) => {
       });
     } else {
       // Spezifische Fehlermeldungen
-      let errorMessage = 'Passwort konnte nicht geändert werden';
+      let errorMessage = '';
       
       if (data.detail) {
         if (data.detail.includes('incorrect')) {
@@ -207,7 +207,7 @@ const Profile = ({ navigation }) => {
         } else if (data.detail.includes('not found')) {
           errorMessage = 'Benutzer wurde nicht gefunden';
         } else {
-          errorMessage = data.detail;
+          errorMessage = 'Passwort konnte nicht geändert werden';
         }
       }
       
@@ -256,7 +256,7 @@ const Profile = ({ navigation }) => {
         setTwoFactorEnabled(true);
         setShowQRModal(true);
       } else {
-        showError('Fehler', setupData.detail || '2FA konnte nicht aktiviert werden');
+        showError('Fehler', '2FA konnte nicht aktiviert werden');
       }
     } catch (error) {
       console.error('2FA Setup Error:', error);
@@ -348,8 +348,8 @@ const Profile = ({ navigation }) => {
         profilePicture: data.profile_picture
       }));
     } else {
-      // ✅ FIX: Fehlerbehandlung für Validierungsfehler
-      let errorMessage = 'Upload fehlgeschlagen';
+
+      let errorMessage = '';
       
       if (data.detail) {
         if (Array.isArray(data.detail)) {
@@ -358,7 +358,7 @@ const Profile = ({ navigation }) => {
         } else if (typeof data.detail === 'string') {
           errorMessage = data.detail;
         } else {
-          errorMessage = JSON.stringify(data.detail);
+          errorMessage = 'Upload fehlgeschlagen';
         }
       }
       
@@ -394,7 +394,7 @@ const Profile = ({ navigation }) => {
               profilePicture: null
             }));
           } else {
-            showError('Fehler', data.detail || 'Löschen fehlgeschlagen');
+            showError('Fehler', 'Löschen fehlgeschlagen');
           }
         } catch (error) {
           console.error('Error deleting profile picture:', error);

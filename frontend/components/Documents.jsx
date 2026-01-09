@@ -138,7 +138,7 @@ const Documents = () => {
       if (response.ok && data.status === "ok") {
         setContracts(data.contracts || []);
       } else {
-        showError("Fehler", data.detail || "Verträge konnten nicht geladen werden");
+        showError("Fehler", "Verträge konnten nicht geladen werden");
       }
     } catch (error) {
       console.error("Error loading contracts:", error);
@@ -194,7 +194,7 @@ const Documents = () => {
           openSignModal(data.contract);
         });
       } else {
-        showError("Fehler", data.detail || "Vertrag konnte nicht erstellt werden");
+        showError("Fehler", "Vertrag konnte nicht erstellt werden");
       }
     } catch (error) {
       console.error("Error creating contract:", error);
@@ -249,7 +249,7 @@ const Documents = () => {
           loadProjectContracts(selectedContract.project_id);
         });
       } else {
-        showError("Fehler", data.detail || "Vertrag konnte nicht unterschrieben werden");
+        showError("Fehler", "Vertrag konnte nicht unterschrieben werden");
       }
     } catch (error) {
       console.error("Error signing contract:", error);
@@ -306,7 +306,7 @@ const Documents = () => {
               loadProjectContracts(contract.project_id);
             });
           } else {
-            showError("Fehler", data.detail || "Vertrag konnte nicht gelöscht werden");
+            showError("Fehler", "Vertrag konnte nicht gelöscht werden");
           }
         } catch (error) {
           console.error("Error deleting contract:", error);

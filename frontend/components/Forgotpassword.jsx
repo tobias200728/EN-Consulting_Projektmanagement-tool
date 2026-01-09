@@ -56,7 +56,7 @@ export default function ForgotPassword({ navigation }) {
           "Falls diese Email existiert, wurde ein Verification Code gesendet."
         );
       } else {
-        showError("Fehler", data.detail || "Etwas ist schief gelaufen");
+        showError("Fehler", "Etwas ist schief gelaufen");
       }
     } catch (error) {
       console.error("Fetch Error:", error);
@@ -96,7 +96,7 @@ export default function ForgotPassword({ navigation }) {
           "Code bestätigt! Bitte neues Passwort eingeben"
         );
       } else {
-        showError("Fehler", data.detail || "Ungültiger Code");
+        showError("Fehler", "Ungültiger Code");
       }
     } catch (error) {
       showError("Fehler", "Verbindung zum Server fehlgeschlagen");
@@ -142,7 +142,7 @@ export default function ForgotPassword({ navigation }) {
           () => navigation.navigate("Login")
         );
       } else {
-        let errorMessage = "Passwort konnte nicht zurückgesetzt werden";
+        let errorMessage = "";
         
         if (data.detail) {
           if (data.detail.includes("expired")) {
@@ -152,7 +152,7 @@ export default function ForgotPassword({ navigation }) {
           } else if (data.detail.includes("No reset code")) {
             errorMessage = "Kein Reset-Code gefunden. Bitte fordere einen neuen Code an.";
           } else {
-            errorMessage = data.detail;
+            errorMessage = "Passwort konnte nicht zurückgesetzt werden";
           }
         }
         

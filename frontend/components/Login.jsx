@@ -83,7 +83,7 @@ const Login = ({ navigation }) => {
           navigation.navigate("Dashboard");
         }
       } else {
-        showError('Login fehlgeschlagen!', data.detail || 'Ungültige Email oder Passwort');
+        showError('Login fehlgeschlagen!', 'Ungültige Email oder Passwort');
       }
 
     } catch (error) {
@@ -109,6 +109,7 @@ const Login = ({ navigation }) => {
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
+          onSubmitEditing={handleLogin}
         />
 
         <Text style={styles.label}>Passwort</Text>
@@ -118,6 +119,7 @@ const Login = ({ navigation }) => {
           value={password}
           secureTextEntry
           onChangeText={setPassword}
+          onSubmitEditing={handleLogin}
         />
 
         <View style={styles.row}>

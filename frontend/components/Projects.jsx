@@ -83,7 +83,7 @@ const Projects = () => {
       if (response.ok && data.status === "ok") {
         setAllUsers(data.users || []);
       } else {
-        showError("Fehler", data.detail || "User konnten nicht geladen werden");
+        showError("Fehler", "User konnten nicht geladen werden");
       }
     } catch (error) {
       console.error("Error loading users:", error);
@@ -149,7 +149,7 @@ const Projects = () => {
         );
         setProjectsList(formattedProjects);
       } else {
-        showError("Fehler", data.detail || "Projekte konnten nicht geladen werden");
+        showError("Fehler", "Projekte konnten nicht geladen werden");
       }
     } catch (error) {
       console.error("Error loading projects:", error);
@@ -198,7 +198,7 @@ const Projects = () => {
         if (data.detail && data.detail.includes("already a member")) {
           showError("Fehler", "Dieser Mitarbeiter ist bereits im Projekt");
         } else {
-          showError("Fehler", data.detail || "Mitarbeiter konnte nicht hinzugefügt werden");
+          showError("Fehler", "Mitarbeiter konnte nicht hinzugefügt werden");
         }
       }
     } catch (error) {
@@ -237,7 +237,7 @@ const Projects = () => {
               });
             });
           } else {
-            showError("Fehler", data.detail || "Mitarbeiter konnte nicht entfernt werden");
+            showError("Fehler", "Mitarbeiter konnte nicht entfernt werden");
           }
         } catch (error) {
           console.error("Error removing member:", error);
@@ -304,7 +304,7 @@ const Projects = () => {
           loadProjects();
         });
       } else {
-        showError("Fehler", data.detail || "Projekt konnte nicht erstellt werden");
+        showError("Fehler", "Projekt konnte nicht erstellt werden");
       }
     } catch (error) {
       console.error("Projekt konnte nicht erstellt werden:", error);
@@ -357,7 +357,7 @@ const Projects = () => {
           loadProjects();
         });
       } else {
-        showError("Fehler", data.detail || "Projekt konnte nicht aktualisiert werden");
+        showError("Fehler", "Projekt konnte nicht aktualisiert werden");
       }
     } catch (error) {
       console.error("Error updating project:", error);
@@ -398,7 +398,7 @@ const Projects = () => {
               loadProjects();
             });
           } else {
-            showError("Fehler", data.detail || "Projekt konnte nicht gelöscht werden");
+            showError("Fehler", "Projekt konnte nicht gelöscht werden");
           }
         } catch (error) {
           console.error("Error deleting project:", error);
@@ -559,7 +559,7 @@ const Projects = () => {
         
         setDetailModalVisible(true);
       } else {
-        showError("Fehler", data.detail || "Projekt konnte nicht geladen werden");
+        showError("Fehler", "Projekt konnte nicht geladen werden");
       }
     } catch (error) {
       console.error("Error loading project details:", error);
@@ -654,7 +654,7 @@ const Projects = () => {
         updateProjectEverywhere(selectedProject.id, updatedTasks);
         closeTaskModal();
       } else {
-        showError("Fehler", data.detail || "Task konnte nicht erstellt werden");
+        showError("Fehler", "Task konnte nicht erstellt werden");
       }
     } catch (e) {
       showError("Fehler", "Server nicht erreichbar");
@@ -702,7 +702,7 @@ const Projects = () => {
 
         closeEditTaskModal();
       } else {
-        showError("Fehler", data.detail || "Task konnte nicht aktualisiert werden");
+        showError("Fehler", "Task konnte nicht aktualisiert werden");
       }
     } catch {
       showError("Fehler", "Server nicht erreichbar");
