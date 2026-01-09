@@ -6,6 +6,7 @@ import CustomAlert from "./CustomAlert";
 import useAlert from "../hooks/useAlert";
 import useAuth from "../hooks/useAuth";
 import { styles } from "../style/Projects.styles";
+import Icon from "react-native-vector-icons/FontAwesome6";
 
 const API_URL = "http://127.0.0.1:8000";
 
@@ -805,16 +806,16 @@ const Projects = () => {
         </View>
 
         <View style={styles.controls}>
-          <View style={styles.searchContainer}>
-            <Text style={styles.searchIcon}>🔍</Text>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Projekte durchsuchen..."
-              placeholderTextColor="#999"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
+        <View style={styles.searchContainer}>
+          <Icon name="magnifying-glass" size={18} color="#999" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Projekte durchsuchen..."
+            placeholderTextColor="#999"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
           <View style={styles.viewToggle}>
             <TouchableOpacity 
               style={[styles.viewButton, viewMode === 'grid' && styles.viewButtonActive]}

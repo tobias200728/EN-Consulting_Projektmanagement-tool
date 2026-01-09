@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomAlert from './CustomAlert';
 import useAlert from '../hooks/useAlert';
@@ -34,7 +34,7 @@ const Login = ({ navigation }) => {
   const handleLogin = async () => {
     // Email-Feld prüfen
     if (!email || email.trim() === '') {
-      showInfo('Info', 'Bitte Email-Adresse eingeben');
+      showError('Info', 'Bitte Email-Adresse eingeben');
       return;
     }
 
@@ -103,7 +103,7 @@ const Login = ({ navigation }) => {
         <Text style={styles.label}>Email</Text>
         <TextInput
           style={styles.input}
-          placeholder="deine@email.com"
+          placeholder="user@example.com"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"

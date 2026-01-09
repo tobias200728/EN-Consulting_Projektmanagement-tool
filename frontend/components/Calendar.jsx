@@ -232,8 +232,8 @@ const Calendar = () => {
       due_date: newDate
     });
 
-    if (success) {
-      showSuccess("Erfolg", "Task wurde verschoben!");
+    if (!success) {
+      showError("Fehler", "Task konnte nicht verschoben werden!");
     }
   };
 

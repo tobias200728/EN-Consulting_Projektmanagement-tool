@@ -19,9 +19,9 @@ export const styles = StyleSheet.create({
     marginBottom: 5,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#666',
-    maxWidth: '70%',
+    maxWidth: '100%',
   },
   newButton: {
     backgroundColor: '#2b5fff',
@@ -48,6 +48,9 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 15,
     height: 45,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
   },
   searchIcon: {
     fontSize: 16,
@@ -55,8 +58,9 @@ export const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
-    color: '#0a0f33',
+    height: '100%',
+    fontSize: 16,
+    marginLeft: 2 ,
   },
   viewToggle: {
     flexDirection: 'row',
