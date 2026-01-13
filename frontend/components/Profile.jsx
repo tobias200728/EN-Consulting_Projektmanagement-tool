@@ -505,6 +505,7 @@ const Profile = ({ navigation }) => {
                   <TextInput
                     style={styles.input}
                     value={profileData.firstName}
+                    maxLength={20}
                     onChangeText={(text) => handleProfileChange('firstName', text)}
                     placeholder="Vorname"
                   />
@@ -514,6 +515,7 @@ const Profile = ({ navigation }) => {
                   <TextInput
                     style={styles.input}
                     value={profileData.lastName}
+                    maxLength={35}
                     onChangeText={(text) => handleProfileChange('lastName', text)}
                     placeholder="Nachname"
                   />

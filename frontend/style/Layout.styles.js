@@ -23,10 +23,11 @@ export const styles = StyleSheet.create({
   burgerButton: {
     height: 70,
     justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#0a0f33',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.1)',
-    paddingLeft: 10,
+    marginLeft: 4,
   },
 
   burgerIcon: {
@@ -35,9 +36,38 @@ export const styles = StyleSheet.create({
   },
 
   menuContainer: {
+    flex: 1,
     paddingTop: 20,
-    paddingBottom: 90,
+    paddingBottom: 20,
   },
+
+  bottomSection: {
+    // Kein flex mehr - nur natürliche Höhe
+    paddingBottom: 10,
+  },
+
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,      // Reduziert von 12
+    paddingHorizontal: 10,
+    marginBottom: 5,          // Reduziert von 10
+    borderRadius: 8,
+  },
+  logoutButtonPressed: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  // logoutButton: {
+  //   flexDirection: 'row',
+  //   alignItems: 'center',
+  //   paddingVertical: 12,
+  //   paddingHorizontal: 15,
+  //   marginBottom: 10,
+  //   borderRadius: 8,
+  //   marginTop: 'auto',
+  //   // Optional: Füge einen Hover-Effekt oder einen leichten Hintergrund hinzu
+  //   // backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  // },
 
   sidebarItem: {
     flexDirection: 'row',
@@ -71,21 +101,32 @@ export const styles = StyleSheet.create({
   },
 
   userSection: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingVertical: 10,      // Reduziert falls vorher größer
+  paddingHorizontal: 10,
+  borderRadius: 8,
+  borderTopWidth: 1,
+  borderTopColor: 'rgba(255,255,255,0.1)',
+  // Entferne: flex: 1 (falls vorhanden)
+  // Entferne: minHeight (falls vorhanden)
+},
+  // userSection: {
+  //   position: 'absolute',
+  //   bottom: 0,
+  //   left: 0,
+  //   right: 0,
 
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 10,
+  //   flexDirection: 'row',
+  //   alignItems: 'center',
+  //   paddingVertical: 15,
+  //   paddingHorizontal: 10,
 
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
+  //   borderTopWidth: 1,
+  //   borderTopColor: 'rgba(255,255,255,0.1)',
 
-    zIndex: 50,
-  },
+  //   zIndex: 50,
+  // },
 
   userAvatarContainer: {
     width: 50,

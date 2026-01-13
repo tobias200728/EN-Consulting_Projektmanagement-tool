@@ -1,10 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Animated, Image } from 'react-native';
+import { View, Text, Pressable, TouchableOpacity, Animated, Image } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { styles } from '../style/Layout.styles';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import useAuth from '../hooks/useAuth';
 
 const API_URL = "http://127.0.0.1:8000";
@@ -112,6 +113,20 @@ export default function Layout({ children }) {
     navigation.navigate('Profile');
   };
 
+  const handleLogout = async () => {
+    try {
+      // Lösche alle gespeicherten Daten
+      await AsyncStorage.clear();
+      // Navigiere zur Login-Seite
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
+  };
+
   const sidebarWidth = slideAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [70, 250],
@@ -124,6 +139,8 @@ export default function Layout({ children }) {
     switch (iconFamily) {
       case "Ionicons":
         return <Ionicons name={iconName} size={iconSize} color={color} />;
+      case "MaterialIcons":
+        return <MaterialIcons name={iconName} size={iconSize} color={color} />;
       default:
         return <MaterialCommunityIcons name={iconName} size={iconSize} color={color} />;
     }
@@ -133,8 +150,8 @@ export default function Layout({ children }) {
     <View style={styles.container}>
       {/* Sidebar */}
       <Animated.View style={[styles.sidebar, { width: sidebarWidth }]}>
-        {/* Top */}
-        <View>
+        {/* Top Section - Menu Items */}
+        <View style={{ flex: 1 }}>
           <TouchableOpacity style={styles.burgerButton} onPress={toggleMenu}>
             <View style={{ width: '100%', paddingLeft: 20 }}>
               <Text style={styles.burgerIcon}>☰</Text>
@@ -157,65 +174,93 @@ export default function Layout({ children }) {
                     {renderIcon(item.icon, item.iconFamily)}
                   </View>
 
-                  <Animated.View
-                    style={[
-                      styles.textContainer,
-                      {
-                        opacity: slideAnim,
-                        width: slideAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, 150],
-                        }),
-                      },
-                    ]}
-                  >
-                    <Text style={styles.sidebarText}>{item.label}</Text>
-                  </Animated.View>
+                  {/* Text nur anzeigen wenn Sidebar offen ist */}
+                  {open && (
+                    <Animated.View
+                      style={[
+                        styles.textContainer,
+                        {
+                          opacity: slideAnim,
+                        },
+                      ]}
+                    >
+                      <Text style={styles.sidebarText}>{item.label}</Text>
+                    </Animated.View>
+                  )}
                 </TouchableOpacity>
               );
             })}
           </View>
         </View>
 
-        {/* User Section */}
-        <TouchableOpacity
-          style={styles.userSection}
-          onPress={handleProfilePress}
-          activeOpacity={0.8}
-        >
-          <View style={styles.userAvatarContainer}>
-            <View style={styles.userAvatar}>
-              {profilePicture ? (
-                <Image
-                  source={{ uri: `data:image/jpeg;base64,${profilePicture}` }}
-                  style={styles.userAvatarImage}
-                />
-              ) : (
-                <Text style={styles.userAvatarText}>👤</Text>
-              )}
-            </View>
-          </View>
-
-          <Animated.View
-            style={[
-              styles.userInfoContainer,
-              {
-                opacity: slideAnim,
-                width: slideAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 150],
-                }),
-              },
+        {/* Bottom Section - Logout Button & User (kompakt!) */}
+        <View style={styles.bottomSection}>
+          {/* Logout Button */}
+          <Pressable
+            onPress={handleLogout}
+            style={({ pressed }) => [
+              styles.logoutButton,
+              pressed && styles.logoutButtonPressed
             ]}
           >
-            <Text style={styles.userName} numberOfLines={1}>
-              {userFirstName}
-            </Text>
-            <Text style={styles.userRole}>
-              {isAdmin ? 'Admin' : isEmployee ? 'Employee' : 'Guest'}
-            </Text>
-          </Animated.View>
-        </TouchableOpacity>
+            <View style={styles.iconContainer}>
+              <MaterialIcons name="logout" size={24} color="white" />
+            </View>
+
+            {/* Text nur anzeigen wenn Sidebar offen ist */}
+            {open && (
+              <Animated.View
+                style={[
+                  styles.textContainer,
+                  {
+                    opacity: slideAnim,
+                  },
+                ]}
+              >
+                <Text style={styles.sidebarText}>Abmelden</Text>
+              </Animated.View>
+            )}
+          </Pressable>
+
+          {/* User Section */}
+          <TouchableOpacity
+            style={styles.userSection}
+            onPress={handleProfilePress}
+            activeOpacity={0.8}
+          >
+            <View style={styles.userAvatarContainer}>
+              <View style={styles.userAvatar}>
+                {profilePicture ? (
+                  <Image
+                    source={{ uri: `data:image/jpeg;base64,${profilePicture}` }}
+                    style={styles.userAvatarImage}
+                  />
+                ) : (
+                  <Text style={styles.userAvatarText}>👤</Text>
+                )}
+              </View>
+            </View>
+
+            {/* User Info nur anzeigen wenn Sidebar offen ist */}
+            {open && (
+              <Animated.View
+                style={[
+                  styles.userInfoContainer,
+                  {
+                    opacity: slideAnim,
+                  },
+                ]}
+              >
+                <Text style={styles.userName} numberOfLines={1}>
+                  {userFirstName}
+                </Text>
+                <Text style={styles.userRole}>
+                  {isAdmin ? 'Admin' : isEmployee ? 'Employee' : 'Guest'}
+                </Text>
+              </Animated.View>
+            )}
+          </TouchableOpacity>
+        </View>
       </Animated.View>
 
       {/* Overlay */}
@@ -229,7 +274,7 @@ export default function Layout({ children }) {
 
       {/* Topbar */}
       <Animated.View style={[styles.topbar, { marginLeft: sidebarWidth }]}>
-        <Text style={styles.title}>EN-Consulting</Text>
+        <Text style={styles.title}>EN-Consulting GmbH</Text>
       </Animated.View>
 
       {/* Content */}
