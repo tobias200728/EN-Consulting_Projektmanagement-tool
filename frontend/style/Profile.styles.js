@@ -1,4 +1,8 @@
 import { StyleSheet } from 'react-native';
+import { Dimensions } from 'react-native';
+
+const { width } = Dimensions.get('window');
+const isMobile = width < 768;
 
 export const styles = StyleSheet.create({
   container: {
@@ -6,6 +10,36 @@ export const styles = StyleSheet.create({
     backgroundColor: '#f5f5f7',
   },
   
+// In jedem StyleSheet:
+header: {
+  padding: isMobile ? 12 : 20, // ✅ Weniger Padding auf Mobile
+  paddingTop: isMobile ? 8 : 10,
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
+},
+
+controls: {
+  flexDirection: isMobile ? 'column' : 'row', // ✅ Stack auf Mobile
+  paddingHorizontal: isMobile ? 12 : 20,
+  marginBottom: isMobile ? 12 : 20,
+  gap: 10,
+},
+
+searchContainer: {
+  flex: 1,
+  width: isMobile ? '100%' : 'auto', // ✅ Volle Breite auf Mobile
+  // ...
+},
+
+newButton: {
+  backgroundColor: '#2b5fff',
+  paddingHorizontal: isMobile ? 16 : 20,
+  paddingVertical: isMobile ? 10 : 12,
+  borderRadius: 8,
+  width: isMobile ? '100%' : 'auto', // ✅ Volle Breite auf Mobile
+},
+
   // Header
   header: {
     padding: 20,

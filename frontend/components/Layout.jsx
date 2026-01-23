@@ -1,23 +1,29 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, Pressable, TouchableOpacity, Animated, Image } from 'react-native';
+import { View, Text, Pressable, TouchableOpacity, Animated, Image, Platform, Dimensions, Modal, ScrollView } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { styles } from '../style/Layout.styles';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import useAuth from '../hooks/useAuth';
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "http://172.20.10.2:8000";
+
+// ✅ Responsive Breakpoint
+const { width } = Dimensions.get('window');
+const isMobile = width < 768;
 
 export default function Layout({ children }) {
   const [open, setOpen] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false); // ✅ Für Mobile Dropdown
   const slideAnim = useRef(new Animated.Value(0)).current;
   const navigation = useNavigation();
   const route = useRoute();
   const { userRole, isAdmin, isEmployee, userId } = useAuth();
+  const slideDown = useRef(new Animated.Value(-600)).current;
   
-  // State für User-Daten
   const [userFirstName, setUserFirstName] = useState('');
   const [profilePicture, setProfilePicture] = useState(null);
 
@@ -52,36 +58,28 @@ export default function Layout({ children }) {
     },
   ];
 
-  // Lade User-Daten beim Mounten
   useEffect(() => {
     loadUserData();
   }, [userId]);
 
   const loadUserData = async () => {
     try {
-      // Hole User-ID
       const id = await AsyncStorage.getItem('user_id');
       if (!id) return;
 
-      // Versuche zuerst aus AsyncStorage zu laden (schneller)
       const cachedFirstName = await AsyncStorage.getItem('user_first_name');
       if (cachedFirstName) {
         setUserFirstName(cachedFirstName);
       }
 
-      // Dann vom Backend laden (aktuellste Daten + Profilbild)
       const response = await fetch(`${API_URL}/getuserbyID/${id}`);
       const data = await response.json();
 
       if (response.ok) {
-        // Setze Vornamen
         const firstName = data.first_name || data.email?.split('@')[0] || 'User';
         setUserFirstName(firstName);
-        
-        // Update AsyncStorage
         await AsyncStorage.setItem('user_first_name', firstName);
 
-        // Setze Profilbild wenn vorhanden
         if (data.profile_picture) {
           setProfilePicture(data.profile_picture);
         }
@@ -91,7 +89,6 @@ export default function Layout({ children }) {
     }
   };
 
-  // Filtere Menü-Items basierend auf Rolle
   const visibleMenuItems = menuItems.filter(item => 
     item.roles.includes(userRole)
   );
@@ -107,17 +104,22 @@ export default function Layout({ children }) {
 
   const handleIconPress = (screen) => {
     navigation.navigate(screen);
+    // ✅ Mobile: Schließe Dropdown nach Navigation
+    if (isMobile) {
+      setMenuVisible(false);
+    }
   };
 
   const handleProfilePress = () => {
     navigation.navigate('Profile');
+    if (isMobile) {
+      setMenuVisible(false);
+    }
   };
 
   const handleLogout = async () => {
     try {
-      // Lösche alle gespeicherten Daten
       await AsyncStorage.clear();
-      // Navigiere zur Login-Seite
       navigation.reset({
         index: 0,
         routes: [{ name: 'Login' }],
@@ -132,25 +134,173 @@ export default function Layout({ children }) {
     outputRange: [70, 250],
   });
 
-  const renderIcon = (iconName, iconFamily) => {
-    const color = "white";
-    const iconSize = 24;
+  useEffect(() => {
+  Animated.spring(slideDown, {
+    toValue: menuVisible ? 0 : -600,
+    speed: 12,
+    bounciness: 8,
+    useNativeDriver: true,
+  }).start();
+}, [menuVisible]);
 
+  const renderIcon = (iconName, iconFamily, size = 24, color = "white") => {
     switch (iconFamily) {
       case "Ionicons":
-        return <Ionicons name={iconName} size={iconSize} color={color} />;
+        return <Ionicons name={iconName} size={size} color={color} />;
       case "MaterialIcons":
-        return <MaterialIcons name={iconName} size={iconSize} color={color} />;
+        return <MaterialIcons name={iconName} size={size} color={color} />;
       default:
-        return <MaterialCommunityIcons name={iconName} size={iconSize} color={color} />;
+        return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
     }
   };
 
+// ✅ MOBILE LAYOUT
+if (isMobile) {
+  return (
+    <View style={styles.containerMobile}>
+      {/* ✅ SafeArea für blauen Hintergrund oben */}
+      <SafeAreaView style={styles.safeAreaTop} edges={['top']} />
+      
+      {/* Topbar */}
+      <View style={styles.topbarMobile}>
+        <TouchableOpacity 
+          style={styles.burgerButtonMobile}
+          onPress={() => setMenuVisible(!menuVisible)}
+        >
+          <MaterialCommunityIcons name="menu" size={26} color="white" />
+        </TouchableOpacity>
+        
+        <Text style={styles.titleMobile}>EN-Consulting</Text>
+        
+        <View style={styles.burgerButtonMobile} />
+      </View>
+
+      {/* Content */}
+      <View style={styles.contentMobile}>
+        {children}
+      </View>
+
+      {/* ✅ Verbessertes Dropdown Menu Modal */}
+      <Modal
+  visible={menuVisible}
+  transparent={true}
+  animationType="fade"
+  onRequestClose={() => setMenuVisible(false)}
+>
+  <TouchableOpacity 
+    style={styles.modalOverlay}
+    activeOpacity={1}
+    onPress={() => setMenuVisible(false)}
+  />
+  
+  {/* ✅ Animated.View mit transform */}
+  <Animated.View style={[
+    styles.dropdownMenuImproved,
+    {
+      transform: [{ translateY: slideDown }]
+    }
+  ]}>
+    {/* Header mit Schließen-Button */}
+    <View style={styles.dropdownHeader}>
+      <Text style={styles.dropdownHeaderTitle}>Menü</Text>
+      <TouchableOpacity 
+        style={styles.closeButtonMobile}
+        onPress={() => setMenuVisible(false)}
+      >
+        <MaterialCommunityIcons name="close" size={24} color="#0a0f33" />
+      </TouchableOpacity>
+    </View>
+
+    <ScrollView showsVerticalScrollIndicator={false}>
+      {/* User Section */}
+      <TouchableOpacity
+        style={styles.userSectionMobile}
+        onPress={handleProfilePress}
+      >
+        <View style={styles.userAvatarMobile}>
+          {profilePicture ? (
+            <Image
+              source={{ uri: `data:image/jpeg;base64,${profilePicture}` }}
+              style={styles.userAvatarImageMobile}
+            />
+          ) : (
+            <MaterialCommunityIcons name="account-circle" size={50} color="#2b5fff" />
+          )}
+        </View>
+        <View style={styles.userInfoMobile}>
+          <Text style={styles.userNameMobile}>{userFirstName || 'User'}</Text>
+          <Text style={styles.userRoleMobile}>
+            {isAdmin ? 'Admin' : isEmployee ? 'Employee' : 'Guest'}
+          </Text>
+        </View>
+        <MaterialCommunityIcons name="chevron-right" size={24} color="#ccc" />
+      </TouchableOpacity>
+
+      <View style={styles.divider} />
+
+      {/* Menu Items */}
+      {visibleMenuItems.map((item, index) => {
+        const isActive = route.name === item.screen;
+        return (
+          <TouchableOpacity
+            key={index}
+            style={[
+              styles.menuItemMobile,
+              isActive && styles.menuItemActiveMobile
+            ]}
+            onPress={() => handleIconPress(item.screen)}
+          >
+            <View style={[
+              styles.menuItemIconContainer,
+              isActive && styles.menuItemIconContainerActive
+            ]}>
+              {renderIcon(
+                item.icon, 
+                item.iconFamily, 
+                22, 
+                isActive ? '#2b5fff' : '#666'
+              )}
+            </View>
+            <Text style={[
+              styles.menuItemTextMobile,
+              isActive && styles.menuItemTextActiveMobile
+            ]}>
+              {item.label}
+            </Text>
+            {isActive && (
+              <View style={styles.activeIndicator} />
+            )}
+          </TouchableOpacity>
+        );
+      })}
+
+      <View style={styles.divider} />
+
+      {/* Logout */}
+      <TouchableOpacity
+        style={styles.logoutButtonMobile}
+        onPress={handleLogout}
+      >
+        <View style={styles.logoutIconContainer}>
+          <MaterialIcons name="logout" size={22} color="#dc3545" />
+        </View>
+        <Text style={styles.logoutTextMobile}>Abmelden</Text>
+      </TouchableOpacity>
+
+      {/* Bottom Padding */}
+      <View style={{ height: 30 }} />
+    </ScrollView>
+  </Animated.View>
+</Modal>
+    </View>
+  );
+}
+
+  // ✅ DESKTOP LAYOUT (Original)
   return (
     <View style={styles.container}>
       {/* Sidebar */}
       <Animated.View style={[styles.sidebar, { width: sidebarWidth }]}>
-        {/* Top Section - Menu Items */}
         <View style={{ flex: 1 }}>
           <TouchableOpacity style={styles.burgerButton} onPress={toggleMenu}>
             <View style={{ width: '100%', paddingLeft: 20 }}>
@@ -174,14 +324,11 @@ export default function Layout({ children }) {
                     {renderIcon(item.icon, item.iconFamily)}
                   </View>
 
-                  {/* Text nur anzeigen wenn Sidebar offen ist */}
                   {open && (
                     <Animated.View
                       style={[
                         styles.textContainer,
-                        {
-                          opacity: slideAnim,
-                        },
+                        { opacity: slideAnim }
                       ]}
                     >
                       <Text style={styles.sidebarText}>{item.label}</Text>
@@ -193,9 +340,7 @@ export default function Layout({ children }) {
           </View>
         </View>
 
-        {/* Bottom Section - Logout Button & User (kompakt!) */}
         <View style={styles.bottomSection}>
-          {/* Logout Button */}
           <Pressable
             onPress={handleLogout}
             style={({ pressed }) => [
@@ -207,14 +352,11 @@ export default function Layout({ children }) {
               <MaterialIcons name="logout" size={24} color="white" />
             </View>
 
-            {/* Text nur anzeigen wenn Sidebar offen ist */}
             {open && (
               <Animated.View
                 style={[
                   styles.textContainer,
-                  {
-                    opacity: slideAnim,
-                  },
+                  { opacity: slideAnim }
                 ]}
               >
                 <Text style={styles.sidebarText}>Abmelden</Text>
@@ -222,7 +364,6 @@ export default function Layout({ children }) {
             )}
           </Pressable>
 
-          {/* User Section */}
           <TouchableOpacity
             style={styles.userSection}
             onPress={handleProfilePress}
@@ -241,14 +382,11 @@ export default function Layout({ children }) {
               </View>
             </View>
 
-            {/* User Info nur anzeigen wenn Sidebar offen ist */}
             {open && (
               <Animated.View
                 style={[
                   styles.userInfoContainer,
-                  {
-                    opacity: slideAnim,
-                  },
+                  { opacity: slideAnim }
                 ]}
               >
                 <Text style={styles.userName} numberOfLines={1}>
@@ -263,7 +401,6 @@ export default function Layout({ children }) {
         </View>
       </Animated.View>
 
-      {/* Overlay */}
       {open && (
         <TouchableOpacity
           style={styles.overlay}
@@ -272,12 +409,10 @@ export default function Layout({ children }) {
         />
       )}
 
-      {/* Topbar */}
       <Animated.View style={[styles.topbar, { marginLeft: sidebarWidth }]}>
         <Text style={styles.title}>EN-Consulting GmbH</Text>
       </Animated.View>
 
-      {/* Content */}
       <Animated.View style={[styles.content, { marginLeft: sidebarWidth }]}>
         {children}
       </Animated.View>

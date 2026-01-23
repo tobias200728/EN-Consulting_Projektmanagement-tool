@@ -6,7 +6,7 @@ import CustomAlert from "./CustomAlert";
 import useAlert from "../hooks/useAlert";
 import { styles } from "../style/Calendar.styles";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "http://172.20.10.2:8000";
 
 const Calendar = () => {
   const [viewMode, setViewMode] = useState("weekly");

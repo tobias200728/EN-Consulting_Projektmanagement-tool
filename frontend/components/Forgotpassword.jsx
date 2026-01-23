@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-nativ
 import CustomAlert from './CustomAlert';
 import useAlert from '../hooks/useAlert';
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "http://172.20.10.2:8000";
 
 export default function ForgotPassword({ navigation }) {
   const [step, setStep] = useState(1); // 1: Email, 2: Code, 3: New Password

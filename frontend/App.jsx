@@ -1,7 +1,8 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import Login from './components/Login';
 import ForgotPassword from './components/Forgotpassword';
@@ -16,20 +17,22 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
-    <NavigationContainer>
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Login" component={Login} />
-      <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
-      <Stack.Screen name="TwoFA" component={TwoFA} />
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Login" component={Login} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+          <Stack.Screen name="TwoFA" component={TwoFA} />
 
-      <Stack.Screen name="Dashboard" component={Dashboard} />
-      <Stack.Screen name="Projects" component={Projects} />
-      <Stack.Screen name="Calendar" component={Calendar} />
-      <Stack.Screen name="Documents" component={Documents} />
-      <Stack.Screen name="Profile" component={Profile} />
-    </Stack.Navigator>
-      <StatusBar style="auto" />
-    </NavigationContainer>
+          <Stack.Screen name="Dashboard" component={Dashboard} />
+          <Stack.Screen name="Projects" component={Projects} />
+          <Stack.Screen name="Calendar" component={Calendar} />
+          <Stack.Screen name="Documents" component={Documents} />
+          <Stack.Screen name="Profile" component={Profile} />
+        </Stack.Navigator>
+        <StatusBar style="auto" />
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
 

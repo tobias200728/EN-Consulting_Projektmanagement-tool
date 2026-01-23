@@ -10,7 +10,7 @@ import useAuth from "../hooks/useAuth";
 import SignatureCanvas from "./SignatureCanvas";
 import { styles } from "../style/Documents.styles";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "http://172.20.10.2:8000";
 
 const Documents = () => {
   const [loading, setLoading] = useState(false);

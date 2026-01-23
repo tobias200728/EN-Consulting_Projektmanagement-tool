@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomAlert from './CustomAlert';
 import useAlert from '../hooks/useAlert';
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "http://172.20.10.2:8000";
 
 const Login = ({ navigation }) => {
   const [email, setEmail] = useState('');

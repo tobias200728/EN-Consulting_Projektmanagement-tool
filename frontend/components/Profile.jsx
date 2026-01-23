@@ -7,7 +7,7 @@ import useAlert from '../hooks/useAlert';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "http://172.20.10.2:8000";
 
 const Profile = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('profile');

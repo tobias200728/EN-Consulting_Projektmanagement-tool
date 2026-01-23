@@ -8,7 +8,7 @@ import useAuth from "../hooks/useAuth";
 import { styles } from "../style/Projects.styles";
 import Icon from "react-native-vector-icons/FontAwesome6";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "http://172.20.10.2:8000";
 
 const Projects = () => {
   const [activeTab, setActiveTab] = useState("all");
