@@ -7,6 +7,7 @@ import useAlert from "../hooks/useAlert";
 import useAuth from "../hooks/useAuth";
 import { styles } from "../style/Projects.styles";
 import Icon from "react-native-vector-icons/FontAwesome6";
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const API_URL = "http://172.20.10.2:8000";
 
@@ -30,6 +31,7 @@ const Projects = () => {
   const [allUsers, setAllUsers] = useState([]);
   const [projectMembers, setProjectMembers] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState(null);
+  
   
   const [newProject, setNewProject] = useState({
     name: "",
@@ -1012,6 +1014,7 @@ const Projects = () => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.detailModalContent}>
+            <SafeAreaView edges={['top']} style={{ flex: 0, backgroundColor: 'white' }} />
             <ScrollView>
               {/* Header */}
               <View style={styles.detailHeader}>

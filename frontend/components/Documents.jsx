@@ -259,29 +259,53 @@ const Documents = () => {
     }
   };
 
-  const handleDownloadContract = async (contract) => {
-    if (!contract.has_pdf) {
-      showInfo("Info", "Dieser Vertrag wurde noch nicht unterschrieben und hat kein PDF.");
-      return;
-    }
 
-    try {
-      setLoading(true);
-      const id = await AsyncStorage.getItem('user_id');
-      
-      const url = `${API_URL}/contracts/${contract.id}/download?user_id=${id}`;
-      
-      // Für Web: Öffne in neuem Tab
+const handleDownloadContract = async (contract) => {
+  if (!contract.has_pdf) {
+    showInfo("Info", "Dieser Vertrag wurde noch nicht unterschrieben und hat kein PDF.");
+    return;
+  }
+
+  try {
+    setLoading(true);
+    const id = await AsyncStorage.getItem('user_id');
+    
+    const url = `${API_URL}/contracts/${contract.id}/download?user_id=${id}`;
+    
+    // Web: Öffne in neuem Tab
+    if (typeof window !== 'undefined' && window.open) {
       window.open(url, '_blank');
+      showSuccess("Erfolg", "PDF wird geöffnet...");
+    } else {
+      // Mobile Fallback: Lade PDF und öffne es
+      const response = await fetch(url);
+      const blob = await response.blob();
       
-      showSuccess("Erfolg", "PDF wird heruntergeladen...");
-    } catch (error) {
-      console.error("Error downloading contract:", error);
-      showError("Fehler", "Download fehlgeschlagen");
-    } finally {
-      setLoading(false);
+      // Erstelle temporäre URL
+      const fileUrl = URL.createObjectURL(blob);
+      
+      // Erstelle Download Link
+      const link = document.createElement('a');
+      link.href = fileUrl;
+      link.download = `${contract.title.replace(/[^a-z0-9]/gi, '_')}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Öffne PDF auch direkt
+      setTimeout(() => {
+        window.open(fileUrl, '_blank');
+      }, 100);
+      
+      showSuccess("Erfolg", "PDF wird heruntergeladen und geöffnet...");
     }
-  };
+  } catch (error) {
+    console.error("Error downloading contract:", error);
+    showError("Fehler", "Download fehlgeschlagen");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleDeleteContract = async (contract) => {
     showConfirm(

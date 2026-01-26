@@ -1,6 +1,9 @@
 // frontend/style/Documents.styles.js
 
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Dimensions } from 'react-native';
+
+const { width } = Dimensions.get('window');
+const isMobile = width < 768;
 
 export const styles = StyleSheet.create({
   container: {
@@ -10,29 +13,36 @@ export const styles = StyleSheet.create({
   
   // Header
   header: {
-    padding: 20,
-    paddingTop: 10,
-    flexDirection: 'row',
+    padding: isMobile ? 12 : 20,
+    paddingTop: isMobile ? 8 : 10,
+    flexDirection: isMobile ? 'column' : 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: isMobile ? 'stretch' : 'flex-start',
+    gap: isMobile ? 10 : 0,
   },
+  
   title: {
-    fontSize: 32,
+    fontSize: isMobile ? 24 : 32,
     fontWeight: 'bold',
     color: '#0a0f33',
     marginBottom: 5,
   },
+  
   subtitle: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : 14,
     color: '#666',
-    maxWidth: '70%',
+    maxWidth: isMobile ? '100%' : '70%',
   },
+  
   uploadButton: {
     backgroundColor: '#2b5fff',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: isMobile ? 16 : 20,
+    paddingVertical: isMobile ? 10 : 12,
     borderRadius: 8,
+    width: isMobile ? '100%' : 'auto',
+    alignItems: 'center',
   },
+  
   uploadButtonText: {
     color: 'white',
     fontWeight: '600',
@@ -41,85 +51,102 @@ export const styles = StyleSheet.create({
 
   // Filter Section
   filterSection: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingHorizontal: isMobile ? 12 : 20,
+    marginBottom: isMobile ? 15 : 20,
   },
+  
   filterLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#0a0f33',
     marginBottom: 10,
   },
+  
   projectChips: {
     flexDirection: 'row',
   },
+  
   projectChip: {
     backgroundColor: 'white',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: isMobile ? 14 : 16,
+    paddingVertical: isMobile ? 7 : 8,
     borderRadius: 20,
     marginRight: 10,
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
+  
   projectChipActive: {
     backgroundColor: '#2b5fff',
     borderColor: '#2b5fff',
   },
+  
   projectChipText: {
-    fontSize: 13,
+    fontSize: isMobile ? 12 : 13,
     color: '#0a0f33',
     fontWeight: '500',
   },
+  
   projectChipTextActive: {
     color: 'white',
   },
 
   // Contracts Grid
   contractsGrid: {
-    padding: 20,
-    gap: 15,
+    padding: isMobile ? 12 : 20,
+    gap: isMobile ? 12 : 15,
   },
+  
   contractCard: {
     backgroundColor: 'white',
     borderRadius: 12,
-    padding: 20,
+    padding: isMobile ? 15 : 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
   },
+  
   contractCardHeader: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: isMobile ? 'flex-start' : 'flex-start',
     marginBottom: 15,
+    gap: isMobile ? 10 : 0,
   },
+  
   contractCardLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    width: isMobile ? '100%' : 'auto',
   },
+  
   contractCardIcon: {
-    fontSize: 24,
+    fontSize: isMobile ? 22 : 24,
     marginRight: 12,
   },
+  
   contractCardTitle: {
-    fontSize: 16,
+    fontSize: isMobile ? 15 : 16,
     fontWeight: '600',
     color: '#0a0f33',
     marginBottom: 4,
   },
+  
   contractCardType: {
     fontSize: 12,
     color: '#666',
   },
+  
   contractStatusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
+    alignSelf: isMobile ? 'flex-start' : 'auto',
   },
+  
   contractStatusText: {
     fontSize: 11,
     fontWeight: '600',
@@ -129,71 +156,80 @@ export const styles = StyleSheet.create({
   // Contract Details
   contractDetails: {
     backgroundColor: '#f9f9f9',
-    padding: 15,
+    padding: isMobile ? 12 : 15,
     borderRadius: 8,
     marginBottom: 15,
     gap: 8,
   },
+  
   contractDetailRow: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     justifyContent: 'space-between',
+    gap: isMobile ? 4 : 0,
   },
+  
   contractDetailLabel: {
     fontSize: 13,
     color: '#666',
     fontWeight: '500',
   },
+  
   contractDetailValue: {
     fontSize: 13,
     color: '#0a0f33',
     fontWeight: '600',
-    textAlign: 'right',
-    flex: 1,
-    marginLeft: 10,
+    textAlign: isMobile ? 'left' : 'right',
+    flex: isMobile ? 0 : 1,
+    marginLeft: isMobile ? 0 : 10,
   },
 
   // Contract Actions
   contractActions: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     gap: 10,
-    flexWrap: 'wrap',
   },
+  
   signButton: {
     flex: 1,
-    minWidth: 120,
+    minWidth: isMobile ? '100%' : 120,
     backgroundColor: '#28a745',
-    paddingVertical: 12,
+    paddingVertical: isMobile ? 14 : 12,
     paddingHorizontal: 15,
     borderRadius: 8,
     alignItems: 'center',
   },
+  
   signButtonText: {
     color: 'white',
     fontWeight: '600',
     fontSize: 14,
   },
+  
   downloadButton: {
     flex: 1,
-    minWidth: 120,
+    minWidth: isMobile ? '100%' : 120,
     backgroundColor: '#2b5fff',
-    paddingVertical: 12,
+    paddingVertical: isMobile ? 14 : 12,
     paddingHorizontal: 15,
     borderRadius: 8,
     alignItems: 'center',
   },
+  
   downloadButtonText: {
     color: 'white',
     fontWeight: '600',
     fontSize: 14,
   },
+  
   deleteButtonSmall: {
     backgroundColor: '#dc3545',
-    paddingVertical: 12,
+    paddingVertical: isMobile ? 14 : 12,
     paddingHorizontal: 15,
     borderRadius: 8,
     alignItems: 'center',
-    minWidth: 50,
+    minWidth: isMobile ? '100%' : 50,
   },
+  
   deleteButtonTextSmall: {
     fontSize: 16,
   },
@@ -202,18 +238,21 @@ export const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 60,
+    padding: isMobile ? 40 : 60,
   },
+  
   emptyStateIcon: {
-    fontSize: 80,
+    fontSize: isMobile ? 60 : 80,
     marginBottom: 20,
   },
+  
   emptyStateTitle: {
-    fontSize: 20,
+    fontSize: isMobile ? 18 : 20,
     fontWeight: '600',
     color: '#0a0f33',
     marginBottom: 10,
   },
+  
   emptyStateText: {
     fontSize: 14,
     color: '#666',
@@ -228,11 +267,13 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 40,
   },
+  
   loadingText: {
     marginTop: 15,
     fontSize: 16,
     color: '#666',
   },
+  
   loadingOverlay: {
     position: 'absolute',
     top: 0,
@@ -252,43 +293,48 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  
   modalContent: {
-    width: '90%',
+    width: isMobile ? '95%' : '90%',
     maxWidth: 600,
-    maxHeight: '90%',
+    maxHeight: isMobile ? '95%' : '90%',
     backgroundColor: 'white',
     borderRadius: 15,
-    padding: 25,
+    padding: isMobile ? 20 : 25,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
     elevation: 10,
   },
+  
   signModalContent: {
-    width: '90%',
+    width: isMobile ? '95%' : '90%',
     maxWidth: 700,
-    maxHeight: '90%',
+    maxHeight: isMobile ? '95%' : '90%',
     backgroundColor: 'white',
     borderRadius: 15,
-    padding: 25,
+    padding: isMobile ? 20 : 25,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
     elevation: 10,
   },
+  
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
   },
+  
   modalTitle: {
-    fontSize: 22,
+    fontSize: isMobile ? 18 : 22,
     fontWeight: 'bold',
     color: '#0a0f33',
   },
+  
   closeButton: {
     width: 30,
     height: 30,
@@ -297,6 +343,7 @@ export const styles = StyleSheet.create({
     borderRadius: 15,
     backgroundColor: '#f0f0f0',
   },
+  
   closeButtonText: {
     fontSize: 18,
     color: '#666',
@@ -307,12 +354,14 @@ export const styles = StyleSheet.create({
   formGroup: {
     marginBottom: 20,
   },
+  
   label: {
     fontSize: 14,
     fontWeight: '600',
     color: '#0a0f33',
     marginBottom: 8,
   },
+  
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -322,6 +371,7 @@ export const styles = StyleSheet.create({
     backgroundColor: '#f9f9f9',
     color: '#0a0f33',
   },
+  
   textArea: {
     height: 100,
     textAlignVertical: 'top',
@@ -331,7 +381,9 @@ export const styles = StyleSheet.create({
   projectSelectionRow: {
     flexDirection: 'row',
     gap: 10,
+    flexWrap: isMobile ? 'wrap' : 'nowrap',
   },
+  
   projectSelectButton: {
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -339,16 +391,21 @@ export const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     borderWidth: 1,
     borderColor: '#e0e0e0',
+    minWidth: isMobile ? '48%' : 'auto',
   },
+  
   projectSelectButtonActive: {
     backgroundColor: '#2b5fff',
     borderColor: '#2b5fff',
   },
+  
   projectSelectButtonText: {
     fontSize: 13,
     color: '#666',
     fontWeight: '500',
+    textAlign: 'center',
   },
+  
   projectSelectButtonTextActive: {
     color: 'white',
     fontWeight: '600',
@@ -356,9 +413,10 @@ export const styles = StyleSheet.create({
 
   // Document Type Buttons
   documentTypeButtons: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     gap: 10,
   },
+  
   documentTypeButton: {
     flex: 1,
     padding: 15,
@@ -367,20 +425,25 @@ export const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#e0e0e0',
     alignItems: 'center',
+    minWidth: isMobile ? '100%' : 'auto',
   },
+  
   documentTypeButtonActive: {
     backgroundColor: '#e3f2fd',
     borderColor: '#2b5fff',
   },
+  
   documentTypeIcon: {
     fontSize: 32,
     marginBottom: 8,
   },
+  
   documentTypeButtonText: {
     fontSize: 13,
     color: '#666',
     fontWeight: '500',
   },
+  
   documentTypeButtonTextActive: {
     color: '#2b5fff',
     fontWeight: '600',
@@ -388,17 +451,20 @@ export const styles = StyleSheet.create({
 
   // Currency Input
   currencyRow: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     gap: 10,
-    alignItems: 'center',
+    alignItems: isMobile ? 'stretch' : 'center',
   },
+  
   currencyInput: {
     flex: 1,
   },
+  
   currencyButtons: {
     flexDirection: 'row',
     gap: 5,
   },
+  
   currencyButton: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -406,47 +472,58 @@ export const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     borderWidth: 1,
     borderColor: '#e0e0e0',
+    flex: isMobile ? 1 : 0,
   },
+  
   currencyButtonActive: {
     backgroundColor: '#2b5fff',
     borderColor: '#2b5fff',
   },
+  
   currencyButtonText: {
     fontSize: 13,
     color: '#666',
     fontWeight: '600',
+    textAlign: 'center',
   },
 
   // Modal Buttons
   modalButtons: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     gap: 10,
     marginTop: 10,
   },
+  
   cancelButton: {
     flex: 1,
     padding: 15,
     borderRadius: 8,
     backgroundColor: '#f0f0f0',
     alignItems: 'center',
+    minWidth: isMobile ? '100%' : 'auto',
   },
+  
   cancelButtonText: {
     fontSize: 15,
     fontWeight: '600',
     color: '#666',
   },
+  
   saveButton: {
     flex: 1,
     padding: 15,
     borderRadius: 8,
     backgroundColor: '#2b5fff',
     alignItems: 'center',
+    minWidth: isMobile ? '100%' : 'auto',
   },
+  
   saveButtonText: {
     fontSize: 15,
     fontWeight: '600',
     color: 'white',
   },
+  
   saveButtonDisabled: {
     opacity: 0.6,
   },
@@ -460,12 +537,14 @@ export const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#2b5fff',
   },
+  
   contractInfoTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#0a0f33',
     marginBottom: 8,
   },
+  
   contractInfoDetail: {
     fontSize: 13,
     color: '#666',
@@ -476,12 +555,14 @@ export const styles = StyleSheet.create({
   signatureSection: {
     marginBottom: 25,
   },
+  
   signatureLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#0a0f33',
     marginBottom: 10,
   },
+  
   signatureButton: {
     backgroundColor: '#28a745',
     padding: 15,
@@ -491,11 +572,13 @@ export const styles = StyleSheet.create({
     borderColor: '#28a745',
     borderStyle: 'dashed',
   },
+  
   signatureButtonText: {
     fontSize: 15,
     fontWeight: '600',
     color: '#28a745',
   },
+  
   signaturePreview: {
     borderWidth: 2,
     borderColor: '#e0e0e0',
@@ -503,6 +586,7 @@ export const styles = StyleSheet.create({
     padding: 10,
     backgroundColor: '#f9f9f9',
   },
+  
   clearSignatureButton: {
     backgroundColor: '#dc3545',
     padding: 10,
@@ -510,6 +594,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
+  
   clearSignatureButtonText: {
     color: 'white',
     fontWeight: '600',
@@ -526,10 +611,12 @@ export const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#ffc107',
   },
+  
   infoBoxIcon: {
     fontSize: 20,
     marginRight: 10,
   },
+  
   infoBoxText: {
     flex: 1,
     fontSize: 13,
