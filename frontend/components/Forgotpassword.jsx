@@ -4,7 +4,7 @@ import CustomAlert from './CustomAlert';
 import useAlert from '../hooks/useAlert';
 import { ip_adress } from '@env';
 
-const API_URL = `http://${ip_adress}:8000/api`;
+const API_URL = `http://${ip_adress}:8000`;
 
 export default function ForgotPassword({ navigation }) {
   const [step, setStep] = useState(1); // 1: Email, 2: Code, 3: New Password

@@ -10,7 +10,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import useAuth from '../hooks/useAuth';
 import { ip_adress } from '@env';
 
-const API_URL = `http://${ip_adress}:8000/api`;
+const API_URL = `http://${ip_adress}:8000`;
 
 // ✅ Responsive Breakpoint
 const { width } = Dimensions.get('window');

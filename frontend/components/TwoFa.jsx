@@ -5,7 +5,7 @@ import CustomAlert from './CustomAlert';
 import useAlert from '../hooks/useAlert';
 import { ip_adress } from '@env';
 
-const API_URL = `http://${ip_adress}:8000/api`;
+const API_URL = `http://${ip_adress}:8000`;
 
 export default function TwoFA({ route, navigation }) {
   // Sicherer Zugriff auf Parameter mit Fallback

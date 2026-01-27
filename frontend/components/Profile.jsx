@@ -8,7 +8,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { ip_adress } from '@env';
 
-const API_URL = `http://${ip_adress}:8000/api`;
+const API_URL = `http://${ip_adress}:8000`;
 
 const Profile = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('profile');

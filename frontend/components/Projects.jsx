@@ -10,7 +10,7 @@ import Icon from "react-native-vector-icons/FontAwesome6";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ip_adress } from '@env';
 
-const API_URL = `http://${ip_adress}:8000/api`;
+const API_URL = `http://${ip_adress}:8000`;
 
 const Projects = () => {
   const [activeTab, setActiveTab] = useState("all");

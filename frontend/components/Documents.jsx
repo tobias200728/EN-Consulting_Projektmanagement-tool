@@ -11,7 +11,7 @@ import SignatureCanvas from "./SignatureCanvas";
 import { styles } from "../style/Documents.styles";
 import { ip_adress } from '@env';
 
-const API_URL = `http://${ip_adress}:8000/api`;
+const API_URL = `http://${ip_adress}:8000`;
 
 const Documents = () => {
   const [loading, setLoading] = useState(false);

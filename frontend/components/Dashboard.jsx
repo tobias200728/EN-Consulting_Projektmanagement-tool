@@ -7,7 +7,7 @@ import useAlert from "../hooks/useAlert";
 import { styles } from "../style/Dashboard.styles";
 import { ip_adress } from '@env';
 
-const API_URL = `http://${ip_adress}:8000/api`;
+const API_URL = `http://${ip_adress}:8000`;
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
