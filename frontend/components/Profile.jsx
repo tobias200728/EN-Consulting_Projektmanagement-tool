@@ -6,8 +6,9 @@ import CustomAlert from './CustomAlert';
 import useAlert from '../hooks/useAlert';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { ip_adress } from '@env';
 
-const API_URL = "http://172.20.10.2:8000";
+const API_URL = `http://${ip_adress}:8000/api`;
 
 const Profile = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('profile');

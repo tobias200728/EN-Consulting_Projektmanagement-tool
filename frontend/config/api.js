@@ -1,7 +1,9 @@
 // API Konfiguration für EN-Consulting App
+import { ip_adress } from '@env';
 
 // Backend URL - ändere dies für Produktion
-export const API_URL = "http://127.0.0.1:8000";
+export const API_URL = `http://${ip_adress}:8000/api`;
+
 
 // Hilfsfunktion für API-Calls mit User-ID
 export const apiCall = async (endpoint, options = {}, userId = null) => {

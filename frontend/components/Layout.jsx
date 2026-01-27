@@ -8,8 +8,9 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import useAuth from '../hooks/useAuth';
+import { ip_adress } from '@env';
 
-const API_URL = "http://172.20.10.2:8000";
+const API_URL = `http://${ip_adress}:8000/api`;
 
 // ✅ Responsive Breakpoint
 const { width } = Dimensions.get('window');

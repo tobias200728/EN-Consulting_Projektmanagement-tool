@@ -5,8 +5,9 @@ import Layout from "./Layout";
 import CustomAlert from "./CustomAlert";
 import useAlert from "../hooks/useAlert";
 import { styles } from "../style/Calendar.styles";
+import { ip_adress } from '@env';
 
-const API_URL = "http://172.20.10.2:8000";
+const API_URL = `http://${ip_adress}:8000/api`;
 
 const Calendar = () => {
   const [viewMode, setViewMode] = useState("weekly");

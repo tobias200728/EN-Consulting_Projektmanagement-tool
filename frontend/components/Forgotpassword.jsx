@@ -2,8 +2,9 @@ import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
 import CustomAlert from './CustomAlert';
 import useAlert from '../hooks/useAlert';
+import { ip_adress } from '@env';
 
-const API_URL = "http://172.20.10.2:8000";
+const API_URL = `http://${ip_adress}:8000/api`;
 
 export default function ForgotPassword({ navigation }) {
   const [step, setStep] = useState(1); // 1: Email, 2: Code, 3: New Password

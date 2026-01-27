@@ -3,8 +3,9 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-nativ
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomAlert from './CustomAlert';
 import useAlert from '../hooks/useAlert';
+import { ip_adress } from '@env';
 
-const API_URL = "http://172.20.10.2:8000";
+const API_URL = `http://${ip_adress}:8000/api`;
 
 export default function TwoFA({ route, navigation }) {
   // Sicherer Zugriff auf Parameter mit Fallback

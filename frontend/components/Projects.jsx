@@ -8,8 +8,9 @@ import useAuth from "../hooks/useAuth";
 import { styles } from "../style/Projects.styles";
 import Icon from "react-native-vector-icons/FontAwesome6";
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ip_adress } from '@env';
 
-const API_URL = "http://172.20.10.2:8000";
+const API_URL = `http://${ip_adress}:8000/api`;
 
 const Projects = () => {
   const [activeTab, setActiveTab] = useState("all");

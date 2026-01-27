@@ -9,8 +9,9 @@ import useAlert from "../hooks/useAlert";
 import useAuth from "../hooks/useAuth";
 import SignatureCanvas from "./SignatureCanvas";
 import { styles } from "../style/Documents.styles";
+import { ip_adress } from '@env';
 
-const API_URL = "http://172.20.10.2:8000";
+const API_URL = `http://${ip_adress}:8000/api`;
 
 const Documents = () => {
   const [loading, setLoading] = useState(false);
