@@ -1021,4 +1021,34 @@ export const styles = StyleSheet.create({
   saveButtonDisabled: {
     opacity: 0.6,
   },
+
+  userListScroll: {
+  maxHeight: 250,
+  borderWidth: 1,
+  borderColor: '#e0e0e0',
+  borderRadius: 8,
+  backgroundColor: '#f9f9f9',
+  marginTop: 5,
+},
+noMembersContainer: {
+  padding: 20,
+  borderWidth: 1,
+  borderColor: '#ffc107',
+  borderRadius: 8,
+  backgroundColor: '#fff3e0',
+  marginTop: 5,
+},
+noMembersText: {
+  fontSize: 14,
+  fontWeight: '600',
+  color: '#f57c00',
+  textAlign: 'center',
+  marginBottom: 8,
+},
+noMembersSubtext: {
+  fontSize: 12,
+  color: '#666',
+  textAlign: 'center',
+  lineHeight: 18,
+},
 });
