@@ -60,6 +60,24 @@ class Project(Base):
     creator = relationship("Users", foreign_keys=[created_by])
 
 
+# ✅ NEU: Projekt-Meilensteine Tabelle
+class ProjectMilestone(Base):
+    __tablename__ = 'project_milestones'
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey('projects.id'), nullable=False)
+    title = Column(String(255), nullable=False)  # z.B. "1. Zwischenpräsentation"
+    description = Column(Text, nullable=True)
+    milestone_date = Column(Date, nullable=False)
+    status = Column(String(50), default='pending')  # pending, completed
+    created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    project = relationship("Project")
+    creator = relationship("Users")
+
+
 class ProjectMember(Base):
     __tablename__ = 'project_members'
 
@@ -83,7 +101,7 @@ class ProjectTodo(Base):
     priority = Column(String(50), default='medium')  # low, medium, high
     assigned_to = Column(Integer, ForeignKey('users.id'), nullable=True)
     created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
-    due_date = Column(Date, nullable=True)
+    due_date = Column(Date, nullable=False)  # ✅ GEÄNDERT: nullable=False (Pflichtfeld!)
 
     # Relationships
     project = relationship("Project")
@@ -101,8 +119,6 @@ class UserTodo(Base):
     status = Column(String(50), default='todo')  # todo, in-progress, completed
     priority = Column(String(50), default='medium')  # low, medium, high
     due_date = Column(Date, nullable=True)
-    
-    # WICHTIG: created_at und updated_at ENTFERNT, da sie in der DB nicht existieren!
 
     # Relationships
     user = relationship("Users")

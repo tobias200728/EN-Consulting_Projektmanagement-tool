@@ -1,4 +1,4 @@
-"""Project TODOs Routes"""
+"""Project TODOs Routes - UPDATED mit Pflicht-Datum"""
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -24,7 +24,7 @@ class ProjectTodoCreate(BaseModel):
     status: str = "todo"
     priority: str = "medium"
     assigned_to: Optional[int] = None
-    due_date: Optional[str] = None
+    due_date: str  # ✅ NICHT MEHR OPTIONAL - Pflichtfeld!
 
 class ProjectTodoUpdate(BaseModel):
     title: Optional[str] = None
@@ -72,10 +72,12 @@ async def create_project_todo(project_id: int, data: ProjectTodoCreate, user_id:
     if not Rbac.can_view_project(db, user, project_id):
         raise HTTPException(status_code=403, detail="You don't have access to this project")
     
+    # ✅ Validiere dass due_date gesetzt ist
+    if not data.due_date or data.due_date.strip() == "":
+        raise HTTPException(status_code=400, detail="Due date is required for project tasks")
+    
     try:
-        due_date_obj = None
-        if data.due_date:
-            due_date_obj = datetime.strptime(data.due_date, "%Y-%m-%d").date()
+        due_date_obj = datetime.strptime(data.due_date, "%Y-%m-%d").date()
         
         db_todo = models.ProjectTodo(
             project_id=project_id,
@@ -96,6 +98,8 @@ async def create_project_todo(project_id: int, data: ProjectTodoCreate, user_id:
             "message": "TODO created successfully",
             "todo": format_todo_response(db_todo, db)
         }
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error creating TODO: {str(e)}")
@@ -164,7 +168,6 @@ async def update_project_todo(project_id: int, todo_id: int, data: ProjectTodoUp
         if data.due_date is not None:
             todo.due_date = datetime.strptime(data.due_date, "%Y-%m-%d").date()
         
-        todo.updated_at = datetime.utcnow()
         db.commit()
         db.refresh(todo)
         

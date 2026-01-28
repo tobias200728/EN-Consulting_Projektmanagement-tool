@@ -34,8 +34,8 @@ const Calendar = () => {
   // Wochentage generieren (aktuelle Woche + offset)
   const getWeekDays = () => {
     const today = new Date();
-    const currentDay = today.getDay(); // 0 = Sonntag, 1 = Montag, ...
-    const diff = currentDay === 0 ? -6 : 1 - currentDay; // Zum Montag springen
+    const currentDay = today.getDay();
+    const diff = currentDay === 0 ? -6 : 1 - currentDay;
     
     const monday = new Date(today);
     monday.setDate(today.getDate() + diff + (currentWeek * 7));
@@ -51,7 +51,7 @@ const Calendar = () => {
       days.push({
         day: dayNames[i],
         date: `${date.getDate()}. ${monthNames[date.getMonth()]}`,
-        fullDate: date.toISOString().split('T')[0], // YYYY-MM-DD Format
+        fullDate: date.toISOString().split('T')[0],
         dateObj: date
       });
     }
@@ -61,7 +61,6 @@ const Calendar = () => {
 
   const [weekDays, setWeekDays] = useState(getWeekDays());
 
-  // User-ID laden und Tasks abrufen
   useEffect(() => {
     loadUserData();
   }, []);
@@ -90,19 +89,67 @@ const Calendar = () => {
     }
   };
 
-  // ✅ KORRIGIERT: Tasks laden - Daten bleiben unverändert vom Backend
+  // ✅ VERBESSERT: Lade sowohl User-TODOs als auch zugewiesene Project-TODOs
   const loadTasks = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/users/${userId}/todos`);
-      const data = await response.json();
-
-      if (response.ok && data.status === "ok") {
-        console.log("📥 Tasks vom Backend erhalten:", data.todos);
-        setTasks(data.todos || []);
-      } else {
-        showError("Fehler", "Tasks konnten nicht geladen werden");
+      
+      // 1. Lade persönliche User-TODOs
+      const userTodosResponse = await fetch(`${API_URL}/users/${userId}/todos`);
+      const userTodosData = await userTodosResponse.json();
+      
+      let allTasks = [];
+      
+      if (userTodosResponse.ok && userTodosData.status === "ok") {
+        // Markiere User-TODOs mit source
+        allTasks = userTodosData.todos.map(todo => ({
+          ...todo,
+          source: 'personal',
+          project_name: null
+        }));
       }
+      
+      // 2. Lade alle Projekte des Users
+      const projectsResponse = await fetch(`${API_URL}/projects?user_id=${userId}`);
+      const projectsData = await projectsResponse.json();
+      
+      if (projectsResponse.ok && projectsData.status === "ok") {
+        // 3. Für jedes Projekt: Lade die Project-TODOs
+        for (const project of projectsData.projects) {
+          try {
+            const projectTodosResponse = await fetch(
+              `${API_URL}/projects/${project.id}/todos?user_id=${userId}`
+            );
+            const projectTodosData = await projectTodosResponse.json();
+            
+            if (projectTodosResponse.ok && projectTodosData.status === "ok") {
+              // Filtere nur Tasks die dem aktuellen User zugewiesen sind
+              const assignedTodos = projectTodosData.todos
+                .filter(todo => todo.assigned_to === parseInt(userId))
+                .map(todo => ({
+                  id: `project-${todo.id}`,
+                  title: todo.title,
+                  description: todo.description,
+                  status: todo.status,
+                  priority: todo.priority,
+                  due_date: todo.due_date,
+                  source: 'project',
+                  project_id: project.id,
+                  project_name: project.name,
+                  original_id: todo.id
+                }));
+              
+              allTasks = [...allTasks, ...assignedTodos];
+            }
+          } catch (error) {
+            console.log(`Could not load todos for project ${project.id}`);
+          }
+        }
+      }
+      
+      console.log("📥 Alle Tasks geladen (User + Project):", allTasks);
+      setTasks(allTasks);
+      
     } catch (error) {
       console.error("Error loading tasks:", error);
       showError("Fehler", "Verbindung zum Server fehlgeschlagen");
@@ -111,7 +158,7 @@ const Calendar = () => {
     }
   };
 
-  // Task erstellen
+  // Task erstellen (nur für persönliche Tasks)
   const handleCreateTask = async () => {
     if (!newTask.title.trim()) {
       showInfo("Fehler", "Bitte gib einen Task-Namen ein!");
@@ -155,23 +202,37 @@ const Calendar = () => {
     }
   };
 
-  // Task aktualisieren (für Drag & Drop + Bearbeiten)
-  const handleUpdateTask = async (taskId, updates) => {
+  // ✅ Task aktualisieren - unterscheide zwischen Personal und Project Tasks
+  const handleUpdateTask = async (task, updates) => {
     try {
       setLoading(true);
       
-      const response = await fetch(`${API_URL}/users/${userId}/todos/${taskId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updates),
-      });
+      let response;
+      
+      if (task.source === 'personal') {
+        // Personal Task Update
+        response = await fetch(`${API_URL}/users/${userId}/todos/${task.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updates),
+        });
+      } else if (task.source === 'project') {
+        // Project Task Update
+        response = await fetch(`${API_URL}/projects/${task.project_id}/todos/${task.original_id}?user_id=${userId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updates),
+        });
+      }
 
       const data = await response.json();
 
       if (response.ok && data.status === "ok") {
-        loadTasks(); // Tasks neu laden
+        loadTasks();
         return true;
       } else {
         showError("Fehler", "Task konnte nicht aktualisiert werden");
@@ -186,8 +247,13 @@ const Calendar = () => {
     }
   };
 
-  // Task löschen
-  const handleDeleteTask = async (taskId) => {
+  // ✅ Task löschen - nur persönliche Tasks dürfen gelöscht werden
+  const handleDeleteTask = async (task) => {
+    if (task.source === 'project') {
+      showError("Fehler", "Projekt-Tasks können nur im Projekt selbst gelöscht werden.");
+      return;
+    }
+
     showConfirm(
       "Task löschen",
       "Möchtest du diesen Task wirklich löschen?",
@@ -195,7 +261,7 @@ const Calendar = () => {
         try {
           setLoading(true);
           
-          const response = await fetch(`${API_URL}/users/${userId}/todos/${taskId}`, {
+          const response = await fetch(`${API_URL}/users/${userId}/todos/${task.id}`, {
             method: "DELETE",
           });
 
@@ -227,9 +293,9 @@ const Calendar = () => {
     );
   };
 
-  // Task zu anderem Datum verschieben (Drag & Drop)
+  // Task zu anderem Datum verschieben
   const handleMoveTask = async (task, newDate) => {
-    const success = await handleUpdateTask(task.id, {
+    const success = await handleUpdateTask(task, {
       due_date: newDate
     });
 
@@ -238,14 +304,14 @@ const Calendar = () => {
     }
   };
 
-  // Task bearbeiten aus Detail-Modal
+  // Task bearbeiten
   const handleSaveTaskEdit = async () => {
     if (!selectedTask.title.trim()) {
       showInfo("Fehler", "Bitte gib einen Task-Namen ein!");
       return;
     }
 
-    const success = await handleUpdateTask(selectedTask.id, {
+    const success = await handleUpdateTask(selectedTask, {
       title: selectedTask.title,
       description: selectedTask.description,
       priority: selectedTask.priority,
@@ -261,26 +327,18 @@ const Calendar = () => {
     }
   };
 
-  // ✅ KORRIGIERT: Tasks nach Datum gruppieren - einfach ersten 10 Zeichen vergleichen
+  // Tasks nach Datum gruppieren
   const getTasksByDate = (date) => {
-    console.log("Suche Tasks für Datum:", date);
-    console.log("Alle Tasks:", tasks);
-    
     const filtered = tasks.filter(task => {
       if (!task.due_date) return false;
-      
-      // Nimm einfach die ersten 10 Zeichen (YYYY-MM-DD)
       const taskDate = task.due_date.substring(0, 10);
-      console.log(`Vergleiche: "${taskDate}" === "${date}" ? ${taskDate === date}`);
-      
       return taskDate === date;
     });
     
-    console.log(`✅ Gefundene Tasks für ${date}:`, filtered.length);
     return filtered;
   };
 
-  // Alle Tasks ohne Datum (für All-Time View)
+  // Alle Tasks ohne Datum
   const getTasksWithoutDate = () => {
     return tasks.filter(task => !task.due_date);
   };
@@ -303,7 +361,6 @@ const Calendar = () => {
   };
 
   const openTaskDetail = (task) => {
-    // Kopie erstellen für Bearbeitung und Datum ohne Uhrzeit
     const taskCopy = {
       ...task,
       due_date: task.due_date ? task.due_date.substring(0, 10) : ""
@@ -360,14 +417,14 @@ const Calendar = () => {
           <View>
             <Text style={styles.title}>Kalender</Text>
             <Text style={styles.subtitle}>
-              Plane und verwalte deine persönlichen Aufgaben
+              Plane und verwalte deine persönlichen Aufgaben und Projekt-Tasks
             </Text>
           </View>
           <TouchableOpacity 
             style={styles.newButton}
             onPress={() => openTaskModal(null)}
           >
-            <Text style={styles.newButtonText}>+ Neuer Task</Text>
+            <Text style={styles.newButtonText}>+ Neuer persönlicher Task</Text>
           </TouchableOpacity>
         </View>
 
@@ -442,16 +499,20 @@ const Calendar = () => {
                             </View>
                           ) : (
                             dayTasks.map((task, taskIndex) => {
-                              // Bestimme die Hintergrundfarbe basierend auf dem Status
-                              let taskBackgroundColor = '#fff'; // Standard: Weiß
+                              let taskBackgroundColor = '#fff';
                               let taskBorderColor = getPriorityColor(task.priority);
                               
                               if (task.status === 'completed') {
-                                taskBackgroundColor = '#e8f5e9'; // Hellgrün
-                                taskBorderColor = '#28a745'; // Grün
+                                taskBackgroundColor = '#e8f5e9';
+                                taskBorderColor = '#28a745';
                               } else if (task.status === 'in-progress') {
-                                taskBackgroundColor = '#fff3e0'; // Hellorange
-                                taskBorderColor = '#ff9800'; // Orange
+                                taskBackgroundColor = '#fff3e0';
+                                taskBorderColor = '#ff9800';
+                              }
+                              
+                              // ✅ Spezielle Farbe für Projekt-Tasks
+                              if (task.source === 'project') {
+                                taskBackgroundColor = '#e3f2fd';
                               }
                               
                               return (
@@ -477,6 +538,15 @@ const Calendar = () => {
                                     </Text>
                                   </View>
 
+                                  {/* ✅ Zeige Projekt-Name an */}
+                                  {task.source === 'project' && task.project_name && (
+                                    <View style={styles.projectBadge}>
+                                      <Text style={styles.projectBadgeText}>
+                                        📁 {task.project_name}
+                                      </Text>
+                                    </View>
+                                  )}
+
                                   {task.description && (
                                     <Text style={styles.taskDescription} numberOfLines={2}>
                                       {task.description}
@@ -495,7 +565,6 @@ const Calendar = () => {
                                   </View>
 
                                   <View style={styles.taskActions}>
-                                    {/* Drag & Drop Buttons */}
                                     {index > 0 && (
                                       <TouchableOpacity 
                                         style={styles.moveButton}
@@ -551,12 +620,16 @@ const Calendar = () => {
             ) : (
               <View style={styles.allTasksList}>
                 {tasks.map((task, index) => {
-                  // Bestimme die Hintergrundfarbe basierend auf dem Status
                   let cardStyle = styles.allTimeTaskCard;
                   if (task.status === 'completed') {
                     cardStyle = [styles.allTimeTaskCard, styles.allTimeTaskCardCompleted];
                   } else if (task.status === 'in-progress') {
                     cardStyle = [styles.allTimeTaskCard, styles.allTimeTaskCardInProgress];
+                  }
+                  
+                  // ✅ Spezielle Farbe für Projekt-Tasks
+                  if (task.source === 'project') {
+                    cardStyle = [styles.allTimeTaskCard, styles.allTimeTaskCardProject];
                   }
                   
                   return (
@@ -573,6 +646,14 @@ const Calendar = () => {
                           </Text>
                           <View style={styles.allTimeTaskInfo}>
                             <Text style={styles.allTimeTaskTitle}>{task.title}</Text>
+                            
+                            {/* ✅ Zeige Projekt-Name an */}
+                            {task.source === 'project' && task.project_name && (
+                              <Text style={styles.allTimeProjectName}>
+                                📁 Projekt: {task.project_name}
+                              </Text>
+                            )}
+                            
                             {task.description && (
                               <Text style={styles.allTimeTaskDescription} numberOfLines={2}>
                                 {task.description}
@@ -623,7 +704,7 @@ const Calendar = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Neuer Task</Text>
+              <Text style={styles.modalTitle}>Neuer persönlicher Task</Text>
               <TouchableOpacity onPress={closeTaskModal} style={styles.closeButton}>
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
@@ -723,7 +804,7 @@ const Calendar = () => {
         </View>
       </Modal>
 
-      {/* Modal für Task-Details (Bearbeiten + Löschen) */}
+      {/* Modal für Task-Details */}
       <Modal
         animationType="fade"
         transparent={true}
@@ -733,7 +814,9 @@ const Calendar = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Task bearbeiten</Text>
+              <Text style={styles.modalTitle}>
+                {selectedTask?.source === 'project' ? 'Projekt-Task' : 'Task bearbeiten'}
+              </Text>
               <TouchableOpacity onPress={closeTaskDetail} style={styles.closeButton}>
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
@@ -741,6 +824,15 @@ const Calendar = () => {
 
             {selectedTask && (
               <ScrollView>
+                {/* ✅ Projekt-Info anzeigen */}
+                {selectedTask.source === 'project' && selectedTask.project_name && (
+                  <View style={styles.projectInfoBanner}>
+                    <Text style={styles.projectInfoText}>
+                      📁 Teil von Projekt: {selectedTask.project_name}
+                    </Text>
+                  </View>
+                )}
+
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Titel *</Text>
                   <TextInput
@@ -748,6 +840,7 @@ const Calendar = () => {
                     placeholder="Task-Name"
                     value={selectedTask.title}
                     onChangeText={(text) => setSelectedTask({...selectedTask, title: text})}
+                    editable={selectedTask.source !== 'project'}
                   />
                 </View>
 
@@ -760,6 +853,7 @@ const Calendar = () => {
                     numberOfLines={3}
                     value={selectedTask.description || ""}
                     onChangeText={(text) => setSelectedTask({...selectedTask, description: text})}
+                    editable={selectedTask.source !== 'project'}
                   />
                 </View>
 
@@ -807,6 +901,7 @@ const Calendar = () => {
                         selectedTask.priority === "low" && styles.priorityButtonLow
                       ]}
                       onPress={() => setSelectedTask({...selectedTask, priority: "low"})}
+                      disabled={selectedTask.source === 'project'}
                     >
                       <Text style={[
                         styles.priorityButtonText,
@@ -819,6 +914,7 @@ const Calendar = () => {
                         selectedTask.priority === "medium" && styles.priorityButtonMedium
                       ]}
                       onPress={() => setSelectedTask({...selectedTask, priority: "medium"})}
+                      disabled={selectedTask.source === 'project'}
                     >
                       <Text style={[
                         styles.priorityButtonText,
@@ -831,6 +927,7 @@ const Calendar = () => {
                         selectedTask.priority === "high" && styles.priorityButtonHigh
                       ]}
                       onPress={() => setSelectedTask({...selectedTask, priority: "high"})}
+                      disabled={selectedTask.source === 'project'}
                     >
                       <Text style={[
                         styles.priorityButtonText,
@@ -850,12 +947,11 @@ const Calendar = () => {
                   />
                 </View>
 
-                {/* Quick Action: Erledigt markieren */}
                 {selectedTask.status !== "completed" && (
                   <TouchableOpacity 
                     style={styles.completeButton}
                     onPress={async () => {
-                      const success = await handleUpdateTask(selectedTask.id, {
+                      const success = await handleUpdateTask(selectedTask, {
                         status: "completed"
                       });
                       if (success) {
@@ -871,12 +967,16 @@ const Calendar = () => {
                 )}
 
                 <View style={styles.modalButtons}>
-                  <TouchableOpacity 
-                    style={styles.deleteButtonModal} 
-                    onPress={() => handleDeleteTask(selectedTask.id)}
-                  >
-                    <Text style={styles.deleteButtonTextModal}>🗑️ Löschen</Text>
-                  </TouchableOpacity>
+                  {/* ✅ Löschen-Button nur für persönliche Tasks */}
+                  {selectedTask.source === 'personal' && (
+                    <TouchableOpacity 
+                      style={styles.deleteButtonModal} 
+                      onPress={() => handleDeleteTask(selectedTask)}
+                    >
+                      <Text style={styles.deleteButtonTextModal}>🗑️ Löschen</Text>
+                    </TouchableOpacity>
+                  )}
+                  
                   <TouchableOpacity 
                     style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
                     onPress={handleSaveTaskEdit}
@@ -893,9 +993,6 @@ const Calendar = () => {
         </View>
       </Modal>
 
-    
-
-      {/* CustomAlert */}
       <CustomAlert {...alert} onDismiss={hideAlert} />
     </Layout>
   );
