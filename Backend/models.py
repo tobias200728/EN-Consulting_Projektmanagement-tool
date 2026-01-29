@@ -1,7 +1,8 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Float, Date, LargeBinary
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime, Float, Date, LargeBinary, ARRAY
 from database import Base
 from datetime import datetime
 from sqlalchemy.orm import relationship
+
 
 
 class Users(Base):
@@ -51,7 +52,9 @@ class Project(Base):
     description = Column(Text, nullable=True)
     status = Column(String(50), default='planning')  # planning, in-progress, completed, on-hold
     progress = Column(Float, default=0.0)  # 0-100
-    due_date = Column(Date, nullable=True)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)  # vorher: due_date
+    interim_dates = Column(ARRAY(Date), nullable=False)  # Array von Daten
     
     # Foreign Keys
     created_by = Column(Integer, ForeignKey('users.id'), nullable=False)

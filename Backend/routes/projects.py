@@ -1,9 +1,10 @@
 """Projects Routes"""
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy.dialects.postgresql import ARRAY
 from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime
+from typing import Optional, List
+from datetime import datetime, date
 from database import SessionLocal
 import models
 import Rbac
@@ -23,14 +24,18 @@ class ProjectCreate(BaseModel):
     description: Optional[str] = None
     status: str = "planning"
     progress: float = 0.0
-    due_date: Optional[str] = None
+    start_date: date
+    end_date: date
+    interim_dates: List[date]
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     status: Optional[str] = None
     progress: Optional[float] = None
-    due_date: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    interim_dates: Optional[List[date]] = None
 
 @router.post("/projects")
 async def create_project(data: ProjectCreate, user_id: int, db: Session = Depends(get_db)):
@@ -39,14 +44,15 @@ async def create_project(data: ProjectCreate, user_id: int, db: Session = Depend
         raise HTTPException(status_code=403, detail="Only admins can create projects")
     
     try:
-        due_date_obj = None
-        if data.due_date:
-            due_date_obj = datetime.strptime(data.due_date, "%Y-%m-%d").date()
-        
         db_project = models.Project(
-            name=data.name, description=data.description,
-            status=data.status, progress=data.progress,
-            due_date=due_date_obj, created_by=user_id
+            name=data.name,
+            description=data.description,
+            status=data.status,
+            progress=data.progress,
+            start_date=data.start_date,
+            end_date=data.end_date,
+            interim_dates=data.interim_dates,
+            created_by=user_id
         )
         db.add(db_project)
         db.commit()
@@ -105,8 +111,12 @@ async def update_project(project_id: int, data: ProjectUpdate, user_id: int, db:
             project.status = data.status
         if data.progress is not None:
             project.progress = data.progress
-        if data.due_date is not None:
-            project.due_date = datetime.strptime(data.due_date, "%Y-%m-%d").date()
+        if data.start_date is not None:
+            project.start_date = data.start_date
+        if data.end_date is not None:
+            project.end_date = data.end_date
+        if data.interim_dates is not None:
+            project.interim_dates = data.interim_dates
         
         db.commit()
         db.refresh(project)
@@ -131,6 +141,9 @@ async def delete_project(project_id: int, user_id: int, db: Session = Depends(ge
     try:
         project_name = project.name
         db.query(models.ProjectMember).filter(models.ProjectMember.project_id == project_id).delete()
+        db.query(models.ProjectTodo).filter(models.ProjectTodo.project_id == project_id).delete()
+        db.query(models.ProjectMilestone).filter(models.ProjectMilestone.project_id == project_id).delete()
+        
         db.delete(project)
         db.commit()
         return {
@@ -141,3 +154,4 @@ async def delete_project(project_id: int, user_id: int, db: Session = Depends(ge
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error deleting project: {str(e)}")
+    

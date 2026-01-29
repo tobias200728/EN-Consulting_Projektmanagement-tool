@@ -27,18 +27,22 @@ const Projects = () => {
   const [loading, setLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [currentUserRole, setCurrentUserRole] = useState(null);
-  
+
   const [projectsList, setProjectsList] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [projectMembers, setProjectMembers] = useState([]);
   const [selectedUserId, setSelectedUserId] = useState(null);
-  
-  
+  const [newInterimDate, setNewInterimDate] = useState("");
+
+
   const [newProject, setNewProject] = useState({
     name: "",
     description: "",
-    due_date: ""
+    start_date: "",
+    end_date: "",
+    interim_dates: []
   });
+
 
   const [newTask, setNewTask] = useState({
     name: "",
@@ -46,18 +50,35 @@ const Projects = () => {
     assignedTo: ""
   });
 
+  const addInterimDate = () => {
+    if (newInterimDate && !newProject.interim_dates.includes(newInterimDate)) {
+      setNewProject({
+        ...newProject,
+        interim_dates: [...newProject.interim_dates, newInterimDate].sort()
+      });
+      setNewInterimDate("");
+    }
+  };
+
+  const removeInterimDate = (dateToRemove) => {
+    setNewProject({
+      ...newProject,
+      interim_dates: newProject.interim_dates.filter(date => date !== dateToRemove)
+    });
+  };
+
   // Alert Hook verwenden
   const { alert, showSuccess, showError, showInfo, showConfirm, hideAlert } = useAlert();
 
   // Auth Hook verwenden für Berechtigungen
-  const { 
-    isAdmin, 
-    isEmployee, 
+  const {
+    isAdmin,
+    isEmployee,
     isGuest,
-    canCreateProject, 
-    canEditProject, 
-    canDeleteProject, 
-    canManageProjectMembers 
+    canCreateProject,
+    canEditProject,
+    canDeleteProject,
+    canManageProjectMembers
   } = useAuth();
 
   // User-ID beim Laden holen
@@ -144,7 +165,9 @@ const Projects = () => {
               title: p.name,
               description: p.description,
               progress: p.progress,
-              dueDate: p.due_date,
+              startDate: p.start_date,
+              endDate: p.end_date,               // (ersetzt dueDate)
+              interimDates: p.interim_dates || [],
               teamMembers: memberCount,
               status: p.status,
               tasks: p.tasks || []
@@ -270,8 +293,12 @@ const Projects = () => {
       showInfo("Fehler", "Bitte gib eine Beschreibung ein!");
       return;
     }
-    if (!newProject.due_date.trim()) {
-      showInfo("Fehler", "Bitte gib ein Abgabedatum ein!");
+    if (!newProject.start_date.trim()) {
+      showInfo("Fehler", "Bitte gib ein Startdatum ein!");
+      return;
+    }
+    if (!newProject.end_date.trim()) {
+      showInfo("Fehler", "Bitte gib ein Enddatum ein!");
       return;
     }
 
@@ -289,7 +316,9 @@ const Projects = () => {
         description: newProject.description,
         status: "planning",
         progress: 0,
-        due_date: newProject.due_date
+        start_date: newProject.start_date,
+        end_date: newProject.end_date,
+        interim_dates: newProject.interim_dates
       };
 
       const response = await fetch(`${API_URL}/projects?user_id=${id}`, {
@@ -339,7 +368,9 @@ const Projects = () => {
         description: selectedProject.description,
         status: selectedProject.status,
         progress: selectedProject.progress,
-        due_date: selectedProject.dueDate
+        start_date: newProject.start_date,
+        end_date: newProject.end_date,
+        interim_dates: newProject.interim_dates
       };
 
       const response = await fetch(
@@ -438,7 +469,7 @@ const Projects = () => {
     let matchesSearch = true;
     if (searchQuery.trim() !== "") {
       const query = searchQuery.toLowerCase();
-      matchesSearch = 
+      matchesSearch =
         project.title.toLowerCase().includes(query) ||
         project.description.toLowerCase().includes(query);
     }
@@ -447,7 +478,7 @@ const Projects = () => {
   });
 
   const getStatusLabel = (status) => {
-    switch(status) {
+    switch (status) {
       case "in-progress": return "In Bearbeitung";
       case "completed": return "Abgeschlossen";
       case "planning": return "Planung";
@@ -490,8 +521,11 @@ const Projects = () => {
     setNewProject({
       name: "",
       description: "",
-      due_date: ""
+      start_date: "",
+      end_date: "",
+      interim_dates: []
     });
+    setNewInterimDate("");
     setModalVisible(true);
   };
 
@@ -551,16 +585,18 @@ const Projects = () => {
           title: data.project.name,
           description: data.project.description,
           progress: calculateProgressFromTodos(todos),
-          dueDate: data.project.due_date,
+          startDate: data.project.start_date,      // 
+          endDate: data.project.end_date,          //  (ersetzt dueDate)
+          interimDates: data.project.interim_dates || [],
           teamMembers: memberCount,
           status: data.project.status,
           tasks: todos
         };
         setSelectedProject(formattedProject);
-        
+
         // Lade Members für die Anzeige
         await loadProjectMembers(project.id);
-        
+
         setDetailModalVisible(true);
       } else {
         showError("Fehler", "Projekt konnte nicht geladen werden");
@@ -622,55 +658,55 @@ const Projects = () => {
   };
 
   const handleSaveTask = async () => {
-  if (!newTask.name.trim()) {
-    showInfo("Fehler", "Bitte gib einen Task-Namen ein!");
-    return;
-  }
-
-  if (!newTask.assignedTo) {
-    showInfo("Fehler", "Bitte weise den Task einem Mitarbeiter zu!");
-    return;
-  }
-
-  try {
-    setLoading(true);
-    const id = await AsyncStorage.getItem("user_id");
-
-    const response = await fetch(
-      `${API_URL}/projects/${selectedProject.id}/todos?user_id=${id}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: newTask.name,
-          priority: newTask.importance,
-          assigned_to: parseInt(newTask.assignedTo)  // ← ÄNDERUNG: null → parseInt(newTask.assignedTo)
-        }),
-      }
-    );
-
-    const data = await response.json();
-
-    if (response.ok && data.status === "ok") {
-      const updatedTasks = [{
-        id: data.todo.id,
-        name: data.todo.title,
-        status: data.todo.status,
-        importance: data.todo.priority,
-        assignedTo: data.todo.assignee?.name || null
-      }, ...selectedProject.tasks];
-
-      updateProjectEverywhere(selectedProject.id, updatedTasks);
-      closeTaskModal();
-    } else {
-      showError("Fehler", "Task konnte nicht erstellt werden");
+    if (!newTask.name.trim()) {
+      showInfo("Fehler", "Bitte gib einen Task-Namen ein!");
+      return;
     }
-  } catch (e) {
-    showError("Fehler", "Server nicht erreichbar");
-  } finally {
-    setLoading(false);
-  }
-};
+
+    if (!newTask.assignedTo) {
+      showInfo("Fehler", "Bitte weise den Task einem Mitarbeiter zu!");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const id = await AsyncStorage.getItem("user_id");
+
+      const response = await fetch(
+        `${API_URL}/projects/${selectedProject.id}/todos?user_id=${id}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: newTask.name,
+            priority: newTask.importance,
+            assigned_to: parseInt(newTask.assignedTo)  // ← ÄNDERUNG: null → parseInt(newTask.assignedTo)
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.status === "ok") {
+        const updatedTasks = [{
+          id: data.todo.id,
+          name: data.todo.title,
+          status: data.todo.status,
+          importance: data.todo.priority,
+          assignedTo: data.todo.assignee?.name || null
+        }, ...selectedProject.tasks];
+
+        updateProjectEverywhere(selectedProject.id, updatedTasks);
+        closeTaskModal();
+      } else {
+        showError("Fehler", "Task konnte nicht erstellt werden");
+      }
+    } catch (e) {
+      showError("Fehler", "Server nicht erreichbar");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleUpdateTask = async () => {
     try {
@@ -695,11 +731,11 @@ const Projects = () => {
         const updatedTasks = selectedProject.tasks.map(t =>
           t.id === editingTask.id
             ? {
-                ...t,
-                name: data.todo.title,
-                importance: data.todo.priority,
-                status: data.todo.status
-              }
+              ...t,
+              name: data.todo.title,
+              importance: data.todo.priority,
+              status: data.todo.status
+            }
             : t
         );
 
@@ -766,7 +802,7 @@ const Projects = () => {
   };
 
   const getImportanceColor = (importance) => {
-    switch(importance) {
+    switch (importance) {
       case "high": return "#dc3545";
       case "medium": return "#ffc107";
       case "low": return "#6c757d";
@@ -775,7 +811,7 @@ const Projects = () => {
   };
 
   const getImportanceLabel = (importance) => {
-    switch(importance) {
+    switch (importance) {
       case "high": return "Hoch";
       case "medium": return "Mittel";
       case "low": return "Niedrig";
@@ -801,8 +837,8 @@ const Projects = () => {
           <View>
             <Text style={styles.title}>Projekte</Text>
             <Text style={styles.subtitle}>
-              {isAdmin 
-                ? 'Verwalte und überwache alle Projekte' 
+              {isAdmin
+                ? 'Verwalte und überwache alle Projekte'
                 : 'Deine zugewiesenen Projekte'}
             </Text>
           </View>
@@ -814,24 +850,24 @@ const Projects = () => {
         </View>
 
         <View style={styles.controls}>
-        <View style={styles.searchContainer}>
-          <Icon name="magnifying-glass" size={18} color="#999" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Projekte durchsuchen..."
-            placeholderTextColor="#999"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
+          <View style={styles.searchContainer}>
+            <Icon name="magnifying-glass" size={18} color="#999" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Projekte durchsuchen..."
+              placeholderTextColor="#999"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
           <View style={styles.viewToggle}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.viewButton, viewMode === 'grid' && styles.viewButtonActive]}
               onPress={() => setViewMode('grid')}
             >
               <Text style={[styles.viewButtonIcon, viewMode === 'grid' && styles.viewButtonIconActive]}>▦</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.viewButton, viewMode === 'list' && styles.viewButtonActive]}
               onPress={() => setViewMode('list')}
             >
@@ -858,17 +894,17 @@ const Projects = () => {
         {viewMode === 'grid' && (
           <View style={styles.projectsGrid}>
             {filteredProjects.map((project, index) => (
-              <TouchableOpacity 
-                key={index} 
+              <TouchableOpacity
+                key={index}
                 style={styles.projectCard}
                 onPress={() => openProjectDetail(project)}
               >
                 <View style={styles.projectCardHeader}>
                   <Text style={styles.projectCardTitle}>{project.title}</Text>
-                  <View style={[styles.statusBadge, 
-                    project.status === 'in-progress' && styles.statusInProgress,
-                    project.status === 'completed' && styles.statusCompleted,
-                    project.status === 'planning' && styles.statusPlanning
+                  <View style={[styles.statusBadge,
+                  project.status === 'in-progress' && styles.statusInProgress,
+                  project.status === 'completed' && styles.statusCompleted,
+                  project.status === 'planning' && styles.statusPlanning
                   ]}>
                     <Text style={styles.statusText}>{getStatusLabel(project.status)}</Text>
                   </View>
@@ -889,7 +925,7 @@ const Projects = () => {
                 <View style={styles.projectCardFooter}>
                   <View style={styles.footerItem}>
                     <Text style={styles.footerIcon}>📅</Text>
-                    <Text style={styles.footerText}>{formatDate(project.dueDate)}</Text>
+                    <Text style={styles.footerText}>{formatDate(project.endDate)}</Text>
                   </View>
                   <View style={styles.footerItem}>
                     <Text style={styles.footerIcon}>👥</Text>
@@ -905,8 +941,8 @@ const Projects = () => {
         {viewMode === 'list' && (
           <View style={styles.projectsList}>
             {filteredProjects.map((project, index) => (
-              <TouchableOpacity 
-                key={index} 
+              <TouchableOpacity
+                key={index}
                 style={styles.projectListItem}
                 onPress={() => openProjectDetail(project)}
               >
@@ -915,10 +951,10 @@ const Projects = () => {
                   <Text style={styles.listItemDescription}>{project.description}</Text>
                 </View>
                 <View style={styles.listItemRight}>
-                  <View style={[styles.statusBadge, 
-                    project.status === 'in-progress' && styles.statusInProgress,
-                    project.status === 'completed' && styles.statusCompleted,
-                    project.status === 'planning' && styles.statusPlanning
+                  <View style={[styles.statusBadge,
+                  project.status === 'in-progress' && styles.statusInProgress,
+                  project.status === 'completed' && styles.statusCompleted,
+                  project.status === 'planning' && styles.statusPlanning
                   ]}>
                     <Text style={styles.statusText}>{getStatusLabel(project.status)}</Text>
                   </View>
@@ -928,7 +964,7 @@ const Projects = () => {
                       <View style={[styles.progressFillSmall, { width: `${project.progress}%` }]} />
                     </View>
                   </View>
-                  <Text style={styles.listItemDate}>📅 {formatDate(project.dueDate)}</Text>
+                  <Text style={styles.listItemDate}>📅 {formatDate(project.endDate)}</Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -966,7 +1002,7 @@ const Projects = () => {
                   style={styles.input}
                   placeholder="z.B. Metro Linie Erweiterung"
                   value={newProject.name}
-                  onChangeText={(text) => setNewProject({...newProject, name: text})}
+                  onChangeText={(text) => setNewProject({ ...newProject, name: text })}
                 />
               </View>
 
@@ -978,26 +1014,73 @@ const Projects = () => {
                   multiline
                   numberOfLines={4}
                   value={newProject.description}
-                  onChangeText={(text) => setNewProject({...newProject, description: text})}
+                  onChangeText={(text) => setNewProject({ ...newProject, description: text })}
                 />
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Abgabedatum *</Text>
+                <Text style={styles.label}>Startdatum *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="YYYY-MM-DD (z.B. 2024-03-15)"
-                  value={newProject.due_date}
-                  onChangeText={(text) => setNewProject({...newProject, due_date: text})}
+                  placeholder="YYYY-MM-DD (z.B. 2025-02-01)"
+                  value={newProject.start_date}
+                  onChangeText={(text) => setNewProject({ ...newProject, start_date: text })}
                 />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Enddatum *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="YYYY-MM-DD (z.B. 2025-12-31)"
+                  value={newProject.end_date}
+                  onChangeText={(text) => setNewProject({ ...newProject, end_date: text })}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Zwischentermine</Text>
+                <View style={styles.interimDateInput}>
+                  <TextInput
+                    style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                    placeholder="YYYY-MM-DD (z.B. 2025-04-15)"
+                    value={newInterimDate}
+                    onChangeText={setNewInterimDate}
+                  />
+                  <TouchableOpacity
+                    style={styles.addInterimButton}
+                    onPress={addInterimDate}
+                    disabled={!newInterimDate}
+                  >
+                    <Text style={styles.addInterimButtonText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {newProject.interim_dates.length > 0 && (
+                  <View style={styles.interimDatesList}>
+                    {newProject.interim_dates.map((date, index) => (
+                      <View key={index} style={styles.interimDateChip}>
+                        <Text style={styles.interimDateText}>{formatDate(date)}</Text>
+                        <TouchableOpacity onPress={() => removeInterimDate(date)}>
+                          <Text style={styles.removeInterimButton}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                <Text style={styles.helperText}>
+                  {newProject.interim_dates.length === 0
+                    ? 'Keine Zwischentermine hinzugefügt'
+                    : `${newProject.interim_dates.length} Zwischentermin${newProject.interim_dates.length > 1 ? 'e' : ''}`}
+                </Text>
               </View>
 
               <View style={styles.modalButtons}>
                 <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
                   <Text style={styles.cancelButtonText}>Abbrechen</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
+                <TouchableOpacity
+                  style={[styles.saveButton, loading && styles.saveButtonDisabled]}
                   onPress={handleSaveProject}
                   disabled={loading}
                 >
@@ -1036,10 +1119,10 @@ const Projects = () => {
               <View style={styles.projectInfo}>
                 <View style={styles.projectInfoHeader}>
                   <Text style={styles.detailTitle}>{selectedProject?.title}</Text>
-                  <View style={[styles.statusBadge, 
-                    selectedProject?.status === 'in-progress' && styles.statusInProgress,
-                    selectedProject?.status === 'completed' && styles.statusCompleted,
-                    selectedProject?.status === 'planning' && styles.statusPlanning
+                  <View style={[styles.statusBadge,
+                  selectedProject?.status === 'in-progress' && styles.statusInProgress,
+                  selectedProject?.status === 'completed' && styles.statusCompleted,
+                  selectedProject?.status === 'planning' && styles.statusPlanning
                   ]}>
                     <Text style={styles.statusText}>{getStatusLabel(selectedProject?.status)}</Text>
                   </View>
@@ -1058,8 +1141,13 @@ const Projects = () => {
                 </View>
 
                 <View style={styles.statCard}>
-                  <Text style={styles.statCardLabel}>Abgabedatum</Text>
-                  <Text style={styles.statCardValue}>{formatDate(selectedProject?.dueDate || "")}</Text>
+                  <Text style={styles.statCardLabel}>Startdatum</Text>
+                  <Text style={styles.statCardValue}>{formatDate(selectedProject?.startDate || "")}</Text>
+                </View>
+
+                <View style={styles.statCard}>
+                  <Text style={styles.statCardLabel}>Enddatum</Text>
+                  <Text style={styles.statCardValue}>{formatDate(selectedProject?.endDate || "")}</Text>
                 </View>
 
                 <View style={styles.statCard}>
@@ -1074,6 +1162,22 @@ const Projects = () => {
                   </Text>
                   <Text style={styles.statCardSubtext}>abgeschlossen</Text>
                 </View>
+
+                {selectedProject?.interimDates && selectedProject.interimDates.length > 0 && (
+                  <View style={styles.statCard}>
+                    <Text style={styles.statCardLabel}>Zwischentermine</Text>
+                    {selectedProject.interimDates.slice(0, 3).map((date, index) => (
+                      <Text key={index} style={styles.statCardSubtext}>
+                        {formatDate(date)}
+                      </Text>
+                    ))}
+                    {selectedProject.interimDates.length > 3 && (
+                      <Text style={styles.statCardSubtext}>
+                        +{selectedProject.interimDates.length - 3} weitere
+                      </Text>
+                    )}
+                  </View>
+                )}
               </View>
 
               {/* Team Members Section - Nur für Admins sichtbar */}
@@ -1082,10 +1186,10 @@ const Projects = () => {
                   <Text style={styles.membersSectionTitle}>Team Mitglieder</Text>
                   <View style={styles.membersList}>
                     {projectMembers.map((member, index) => {
-                      const displayName = member.user_name && member.user_name.trim() !== "" 
-                        ? member.user_name 
+                      const displayName = member.user_name && member.user_name.trim() !== ""
+                        ? member.user_name
                         : member.user_email;
-                      
+
                       return (
                         <View key={index} style={styles.memberItem}>
                           <View style={styles.memberInfo}>
@@ -1098,7 +1202,7 @@ const Projects = () => {
                             </View>
                           </View>
                           {canManageProjectMembers && (
-                            <TouchableOpacity 
+                            <TouchableOpacity
                               style={styles.removeMemberButton}
                               onPress={() => handleRemoveMember(member.user_id)}
                             >
@@ -1135,7 +1239,7 @@ const Projects = () => {
                             >
                               <Text style={styles.taskIcon}>✏️</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                               onPress={() => deleteTask(task.id)}
                               style={styles.taskIconButton}>
                               <Text>🗑</Text>
@@ -1151,7 +1255,7 @@ const Projects = () => {
                             </View>
                           )}
                           <View style={styles.taskMoveButtons}>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                               style={styles.moveButton}
                               onPress={() => moveTask(task.id, "in-progress")}
                             >
@@ -1189,13 +1293,13 @@ const Projects = () => {
                             </View>
                           )}
                           <View style={styles.taskMoveButtons}>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                               style={styles.moveButton}
                               onPress={() => moveTask(task.id, "todo")}
                             >
                               <Text style={styles.moveButtonText}>←</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                               style={styles.moveButton}
                               onPress={() => moveTask(task.id, "completed")}
                             >
@@ -1230,7 +1334,7 @@ const Projects = () => {
                             </View>
                           )}
                           <View style={styles.taskMoveButtons}>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                               style={styles.moveButton}
                               onPress={() => moveTask(task.id, "in-progress")}
                             >
@@ -1299,7 +1403,7 @@ const Projects = () => {
                       <Text style={styles.userItemIcon}>👤</Text>
                       <View>
                         <Text style={styles.userItemName}>
-                          {user.first_name || user.last_name 
+                          {user.first_name || user.last_name
                             ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
                             : user.email}
                         </Text>
@@ -1319,8 +1423,8 @@ const Projects = () => {
               <TouchableOpacity style={styles.cancelButton} onPress={closeAddMemberModal}>
                 <Text style={styles.cancelButtonText}>Abbrechen</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
+              <TouchableOpacity
+                style={[styles.saveButton, loading && styles.saveButtonDisabled]}
                 onPress={handleAddMember}
                 disabled={loading}
               >
@@ -1335,137 +1439,137 @@ const Projects = () => {
 
       {/* Modal für neue Task */}
       <Modal
-  animationType="fade"
-  transparent={true}
-  visible={taskModalVisible}
-  onRequestClose={closeTaskModal}
->
-  <View style={styles.modalOverlay}>
-    <View style={styles.modalContent}>
-      <View style={styles.modalHeader}>
-        <Text style={styles.modalTitle}>Neue Task hinzufügen</Text>
-        <TouchableOpacity onPress={closeTaskModal} style={styles.closeButton}>
-          <Text style={styles.closeButtonText}>✕</Text>
-        </TouchableOpacity>
-      </View>
+        animationType="fade"
+        transparent={true}
+        visible={taskModalVisible}
+        onRequestClose={closeTaskModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Neue Task hinzufügen</Text>
+              <TouchableOpacity onPress={closeTaskModal} style={styles.closeButton}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
 
-      <ScrollView>
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Task Name *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="z.B. Betonverkleidung Installation"
-            value={newTask.name}
-            onChangeText={(text) => setNewTask({...newTask, name: text})}
-          />
-        </View>
+            <ScrollView>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Task Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="z.B. Betonverkleidung Installation"
+                  value={newTask.name}
+                  onChangeText={(text) => setNewTask({ ...newTask, name: text })}
+                />
+              </View>
 
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Wichtigkeit</Text>
-          <View style={styles.statusButtons}>
-            <TouchableOpacity
-              style={[
-                styles.importanceButton,
-                newTask.importance === "low" && styles.importanceButtonActiveLow
-              ]}
-              onPress={() => setNewTask({...newTask, importance: "low"})}
-            >
-              <Text style={[
-                styles.statusButtonText,
-                newTask.importance === "low" && styles.statusButtonTextActive
-              ]}>Niedrig</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.importanceButton,
-                newTask.importance === "medium" && styles.importanceButtonActiveMedium
-              ]}
-              onPress={() => setNewTask({...newTask, importance: "medium"})}
-            >
-              <Text style={[
-                styles.statusButtonText,
-                newTask.importance === "medium" && styles.statusButtonTextActive
-              ]}>Mittel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.importanceButton,
-                newTask.importance === "high" && styles.importanceButtonActiveHigh
-              ]}
-              onPress={() => setNewTask({...newTask, importance: "high"})}
-            >
-              <Text style={[
-                styles.statusButtonText,
-                newTask.importance === "high" && styles.statusButtonTextActive
-              ]}>Hoch</Text>
-            </TouchableOpacity>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Wichtigkeit</Text>
+                <View style={styles.statusButtons}>
+                  <TouchableOpacity
+                    style={[
+                      styles.importanceButton,
+                      newTask.importance === "low" && styles.importanceButtonActiveLow
+                    ]}
+                    onPress={() => setNewTask({ ...newTask, importance: "low" })}
+                  >
+                    <Text style={[
+                      styles.statusButtonText,
+                      newTask.importance === "low" && styles.statusButtonTextActive
+                    ]}>Niedrig</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.importanceButton,
+                      newTask.importance === "medium" && styles.importanceButtonActiveMedium
+                    ]}
+                    onPress={() => setNewTask({ ...newTask, importance: "medium" })}
+                  >
+                    <Text style={[
+                      styles.statusButtonText,
+                      newTask.importance === "medium" && styles.statusButtonTextActive
+                    ]}>Mittel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.importanceButton,
+                      newTask.importance === "high" && styles.importanceButtonActiveHigh
+                    ]}
+                    onPress={() => setNewTask({ ...newTask, importance: "high" })}
+                  >
+                    <Text style={[
+                      styles.statusButtonText,
+                      newTask.importance === "high" && styles.statusButtonTextActive
+                    ]}>Hoch</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Zugewiesen an *</Text>
+                {projectMembers.length === 0 ? (
+                  <View style={styles.noMembersContainer}>
+                    <Text style={styles.noMembersText}>
+                      ⚠️ Keine Mitarbeiter im Projekt
+                    </Text>
+                    <Text style={styles.noMembersSubtext}>
+                      Füge erst Mitarbeiter zum Projekt hinzu, bevor du Tasks erstellst.
+                    </Text>
+                  </View>
+                ) : (
+                  <ScrollView style={styles.userListScroll}>
+                    {projectMembers.map((member, index) => {
+                      const displayName = member.user_name && member.user_name.trim() !== ""
+                        ? member.user_name
+                        : member.user_email;
+
+                      return (
+                        <TouchableOpacity
+                          key={index}
+                          style={[
+                            styles.userItem,
+                            newTask.assignedTo === String(member.user_id) && styles.userItemSelected
+                          ]}
+                          onPress={() => setNewTask({ ...newTask, assignedTo: String(member.user_id) })}
+                        >
+                          <View style={styles.userItemLeft}>
+                            <Text style={styles.userItemIcon}>👤</Text>
+                            <View>
+                              <Text style={styles.userItemName}>{displayName}</Text>
+                              {member.user_name && member.user_name.trim() !== "" && (
+                                <Text style={styles.userItemEmail}>{member.user_email}</Text>
+                              )}
+                            </View>
+                          </View>
+                          {newTask.assignedTo === String(member.user_id) && (
+                            <Text style={styles.userItemCheck}>✓</Text>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+              </View>
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity style={styles.cancelButton} onPress={closeTaskModal}>
+                  <Text style={styles.cancelButtonText}>Abbrechen</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.saveButton, (loading || projectMembers.length === 0 || !newTask.assignedTo) && styles.saveButtonDisabled]}
+                  onPress={handleSaveTask}
+                  disabled={loading || projectMembers.length === 0 || !newTask.assignedTo}
+                >
+                  <Text style={styles.saveButtonText}>
+                    {loading ? "Wird erstellt..." : "Task erstellen"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
-
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Zugewiesen an *</Text>
-          {projectMembers.length === 0 ? (
-            <View style={styles.noMembersContainer}>
-              <Text style={styles.noMembersText}>
-                ⚠️ Keine Mitarbeiter im Projekt
-              </Text>
-              <Text style={styles.noMembersSubtext}>
-                Füge erst Mitarbeiter zum Projekt hinzu, bevor du Tasks erstellst.
-              </Text>
-            </View>
-          ) : (
-            <ScrollView style={styles.userListScroll}>
-              {projectMembers.map((member, index) => {
-                const displayName = member.user_name && member.user_name.trim() !== "" 
-                  ? member.user_name 
-                  : member.user_email;
-                
-                return (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.userItem,
-                      newTask.assignedTo === String(member.user_id) && styles.userItemSelected
-                    ]}
-                    onPress={() => setNewTask({...newTask, assignedTo: String(member.user_id)})}
-                  >
-                    <View style={styles.userItemLeft}>
-                      <Text style={styles.userItemIcon}>👤</Text>
-                      <View>
-                        <Text style={styles.userItemName}>{displayName}</Text>
-                        {member.user_name && member.user_name.trim() !== "" && (
-                          <Text style={styles.userItemEmail}>{member.user_email}</Text>
-                        )}
-                      </View>
-                    </View>
-                    {newTask.assignedTo === String(member.user_id) && (
-                      <Text style={styles.userItemCheck}>✓</Text>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          )}
-        </View>
-
-        <View style={styles.modalButtons}>
-          <TouchableOpacity style={styles.cancelButton} onPress={closeTaskModal}>
-            <Text style={styles.cancelButtonText}>Abbrechen</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.saveButton, (loading || projectMembers.length === 0 || !newTask.assignedTo) && styles.saveButtonDisabled]} 
-            onPress={handleSaveTask}
-            disabled={loading || projectMembers.length === 0 || !newTask.assignedTo}
-          >
-            <Text style={styles.saveButtonText}>
-              {loading ? "Wird erstellt..." : "Task erstellen"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </View>
-  </View>
-</Modal>
+      </Modal>
 
       {/* Modal für Projekt bearbeiten */}
       <Modal
@@ -1490,7 +1594,7 @@ const Projects = () => {
                   style={styles.input}
                   placeholder="Projektname"
                   value={selectedProject?.title}
-                  onChangeText={(text) => setSelectedProject({...selectedProject, title: text})}
+                  onChangeText={(text) => setSelectedProject({ ...selectedProject, title: text })}
                 />
               </View>
 
@@ -1502,7 +1606,7 @@ const Projects = () => {
                   multiline
                   numberOfLines={4}
                   value={selectedProject?.description}
-                  onChangeText={(text) => setSelectedProject({...selectedProject, description: text})}
+                  onChangeText={(text) => setSelectedProject({ ...selectedProject, description: text })}
                 />
               </View>
 
@@ -1514,7 +1618,7 @@ const Projects = () => {
                       styles.statusButton,
                       selectedProject?.status === "planning" && styles.statusButtonActive
                     ]}
-                    onPress={() => setSelectedProject({...selectedProject, status: "planning"})}
+                    onPress={() => setSelectedProject({ ...selectedProject, status: "planning" })}
                   >
                     <Text style={[
                       styles.statusButtonText,
@@ -1526,7 +1630,7 @@ const Projects = () => {
                       styles.statusButton,
                       selectedProject?.status === "in-progress" && styles.statusButtonActive
                     ]}
-                    onPress={() => setSelectedProject({...selectedProject, status: "in-progress"})}
+                    onPress={() => setSelectedProject({ ...selectedProject, status: "in-progress" })}
                   >
                     <Text style={[
                       styles.statusButtonText,
@@ -1538,7 +1642,7 @@ const Projects = () => {
                       styles.statusButton,
                       selectedProject?.status === "completed" && styles.statusButtonActive
                     ]}
-                    onPress={() => setSelectedProject({...selectedProject, status: "completed"})}
+                    onPress={() => setSelectedProject({ ...selectedProject, status: "completed" })}
                   >
                     <Text style={[
                       styles.statusButtonText,
@@ -1549,12 +1653,22 @@ const Projects = () => {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Abgabedatum *</Text>
+                <Text style={styles.label}>Startdatum *</Text>
                 <TextInput
                   style={styles.input}
                   placeholder="YYYY-MM-DD"
-                  value={selectedProject?.dueDate}
-                  onChangeText={(text) => setSelectedProject({...selectedProject, dueDate: text})}
+                  value={selectedProject?.startDate}
+                  onChangeText={(text) => setSelectedProject({ ...selectedProject, startDate: text })}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Enddatum *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="YYYY-MM-DD"
+                  value={selectedProject?.endDate}
+                  onChangeText={(text) => setSelectedProject({ ...selectedProject, endDate: text })}
                 />
               </View>
 
@@ -1562,8 +1676,8 @@ const Projects = () => {
                 <TouchableOpacity style={styles.cancelButton} onPress={closeEditProject}>
                   <Text style={styles.cancelButtonText}>Abbrechen</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
+                <TouchableOpacity
+                  style={[styles.saveButton, loading && styles.saveButtonDisabled]}
                   onPress={handleUpdateProject}
                   disabled={loading}
                 >
@@ -1613,9 +1727,9 @@ const Projects = () => {
                     style={[
                       styles.importanceButton,
                       editingTask?.importance === level &&
-                        (level === "low"
-                          ? styles.importanceButtonActiveLow
-                          : level === "medium"
+                      (level === "low"
+                        ? styles.importanceButtonActiveLow
+                        : level === "medium"
                           ? styles.importanceButtonActiveMedium
                           : styles.importanceButtonActiveHigh)
                     ]}
@@ -1627,14 +1741,14 @@ const Projects = () => {
                       style={[
                         styles.statusButtonText,
                         editingTask?.importance === level &&
-                          styles.statusButtonTextActive
+                        styles.statusButtonTextActive
                       ]}
                     >
                       {level === "low"
                         ? "Niedrig"
                         : level === "medium"
-                        ? "Mittel"
-                        : "Hoch"}
+                          ? "Mittel"
+                          : "Hoch"}
                     </Text>
                   </TouchableOpacity>
                 ))}

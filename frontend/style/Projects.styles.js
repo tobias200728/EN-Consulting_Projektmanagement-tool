@@ -1051,4 +1051,63 @@ noMembersSubtext: {
   textAlign: 'center',
   lineHeight: 18,
 },
+interimDateInput: {
+  flexDirection: 'row',
+  gap: 10,
+  alignItems: 'center',
+  marginBottom: 10,
+},
+
+addInterimButton: {
+  backgroundColor: '#2b5fff',
+  width: 50,
+  height: 50,
+  borderRadius: 8,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+
+addInterimButtonText: {
+  color: 'white',
+  fontSize: 24,
+  fontWeight: 'bold',
+},
+
+interimDatesList: {
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  gap: 8,
+  marginTop: 10,
+  marginBottom: 10,
+},
+
+interimDateChip: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#e8f0fe',
+  borderRadius: 16,
+  paddingVertical: 6,
+  paddingHorizontal: 12,
+  gap: 8,
+},
+
+interimDateText: {
+  color: '#2b5fff',
+  fontSize: 14,
+  fontWeight: '500',
+},
+
+removeInterimButton: {
+  color: '#2b5fff',
+  fontSize: 16,
+  fontWeight: 'bold',
+  paddingLeft: 4,
+},
+
+helperText: {
+  fontSize: 12,
+  color: '#999',
+  marginTop: 5,
+  fontStyle: 'italic',
+},
 });
