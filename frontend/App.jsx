@@ -8,7 +8,7 @@ import Login from './components/Login';
 import ForgotPassword from './components/Forgotpassword';
 import TwoFA from './components/TwoFa';
 import Dashboard from './components/Dashboard';
-import Projects from './components/Projects';
+import Projects from './components/Projects_folder/Projects';
 import Calendar from './components/Calendar';
 import Documents from './components/Documents';
 import Profile from './components/Profile';
