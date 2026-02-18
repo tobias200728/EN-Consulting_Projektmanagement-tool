@@ -1023,91 +1023,683 @@ export const styles = StyleSheet.create({
   },
 
   userListScroll: {
-  maxHeight: 250,
-  borderWidth: 1,
-  borderColor: '#e0e0e0',
-  borderRadius: 8,
-  backgroundColor: '#f9f9f9',
-  marginTop: 5,
-},
-noMembersContainer: {
-  padding: 20,
-  borderWidth: 1,
-  borderColor: '#ffc107',
-  borderRadius: 8,
-  backgroundColor: '#fff3e0',
-  marginTop: 5,
-},
-noMembersText: {
-  fontSize: 14,
-  fontWeight: '600',
-  color: '#f57c00',
-  textAlign: 'center',
-  marginBottom: 8,
-},
-noMembersSubtext: {
-  fontSize: 12,
-  color: '#666',
-  textAlign: 'center',
-  lineHeight: 18,
-},
-interimDateInput: {
-  flexDirection: 'row',
-  gap: 10,
-  alignItems: 'center',
-  marginBottom: 10,
-},
+    maxHeight: 250,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    backgroundColor: '#f9f9f9',
+    marginTop: 5,
+  },
 
-addInterimButton: {
-  backgroundColor: '#2b5fff',
-  width: 50,
-  height: 50,
-  borderRadius: 8,
-  justifyContent: 'center',
-  alignItems: 'center',
-},
+  noMembersContainer: {
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#ffc107',
+    borderRadius: 8,
+    backgroundColor: '#fff3e0',
+    marginTop: 5,
+  },
 
-addInterimButtonText: {
-  color: 'white',
-  fontSize: 24,
-  fontWeight: 'bold',
-},
+  noMembersText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#f57c00',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
 
-interimDatesList: {
-  flexDirection: 'row',
-  flexWrap: 'wrap',
-  gap: 8,
-  marginTop: 10,
-  marginBottom: 10,
-},
+  noMembersSubtext: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
 
-interimDateChip: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: '#e8f0fe',
-  borderRadius: 16,
-  paddingVertical: 6,
-  paddingHorizontal: 12,
-  gap: 8,
-},
+  interimDateInput: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
 
-interimDateText: {
-  color: '#2b5fff',
-  fontSize: 14,
-  fontWeight: '500',
-},
+  addInterimButton: {
+    backgroundColor: '#2b5fff',
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
-removeInterimButton: {
-  color: '#2b5fff',
-  fontSize: 16,
-  fontWeight: 'bold',
-  paddingLeft: 4,
-},
+  addInterimButtonText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
 
-helperText: {
-  fontSize: 12,
-  color: '#999',
-  marginTop: 5,
-  fontStyle: 'italic',
-},
+  interimDatesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+
+  interimDateChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e8f0fe',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+
+  interimDateText: {
+    color: '#2b5fff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  removeInterimButton: {
+    color: '#2b5fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    paddingLeft: 4,
+  },
+
+  helperText: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 5,
+    fontStyle: 'italic',
+  },
+
+  // ─── Neu: Fehlende Styles für die ausgelagerten Komponenten ─────────────────
+
+  // ProjectHeader
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  headerTitle: {
+    fontSize: isMobile ? 24 : 32,
+    fontWeight: 'bold',
+    color: '#0a0f33',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  viewToggleBtn: {
+    width: isMobile ? '48%' : 40,
+    height: 39,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 6,
+    backgroundColor: 'white',
+  },
+  viewToggleActive: {
+    backgroundColor: '#0a0f33',
+  },
+  viewToggleText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  viewToggleTextActive: {
+    color: 'white',
+  },
+  createButton: {
+    backgroundColor: '#2b5fff',
+    paddingHorizontal: isMobile ? 16 : 20,
+    paddingVertical: isMobile ? 10 : 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  createButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+
+  // ProjectCard Extras
+  projectCardAccent: {
+    height: 4,
+    width: '100%',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  projectCardBody: {
+    padding: 15,
+    gap: 8,
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#0a0f33',
+  },
+  progressLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  progressPercent: {
+    fontSize: 11,
+    color: '#0a0f33',
+    fontWeight: '600',
+  },
+  progressBarContainer: {
+    height: 6,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  dateLabel: {
+    fontSize: 11,
+    color: '#666',
+  },
+  dateSeparator: {
+    fontSize: 11,
+    color: '#ccc',
+  },
+
+  // ProjectListItem Extras
+  projectListAccent: {
+    width: 4,
+  },
+  projectListContent: {
+    flex: 1,
+    padding: isMobile ? 15 : 20,
+    gap: 4,
+  },
+  projectListHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  projectListTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0a0f33',
+    flex: 1,
+    marginRight: 8,
+  },
+  projectListDescription: {
+    fontSize: 13,
+    color: '#666',
+  },
+  projectListFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  projectListDate: {
+    fontSize: 11,
+    color: '#999',
+  },
+  projectListProgress: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0a0f33',
+  },
+
+  // Modal Container & Body (neue Komponentennamen)
+  modalContainer: {
+    width: isMobile ? '95%' : '90%',
+    maxWidth: 500,
+    maxHeight: '88%',
+    backgroundColor: 'white',
+    borderRadius: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  modalBody: {
+    padding: isMobile ? 20 : 25,
+  },
+  modalFooter: {
+    flexDirection: isMobile ? 'column' : 'row',
+    gap: 10,
+    padding: isMobile ? 20 : 25,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  modalCloseBtn: {
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 15,
+    backgroundColor: '#f0f0f0',
+  },
+  modalCloseBtnText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+
+  // Form Aliases
+  formLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0a0f33',
+    marginBottom: 8,
+  },
+  formInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    backgroundColor: '#f9f9f9',
+    color: '#0a0f33',
+  },
+  formTextarea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  statusOptions: {
+    flexDirection: 'row',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  statusOption: {
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#f9f9f9',
+    flex: isMobile ? 1 : 0,
+  },
+  statusOptionActive: {
+    backgroundColor: '#2b5fff',
+    borderColor: '#2b5fff',
+  },
+  statusOptionText: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  statusOptionTextActive: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  assigneeOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  assigneeOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#f9f9f9',
+  },
+  assigneeOptionActive: {
+    backgroundColor: '#e3f2fd',
+    borderColor: '#2b5fff',
+  },
+  assigneeOptionText: {
+    fontSize: 13,
+    color: '#444',
+  },
+  addInterimRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 4,
+  },
+  addInterimBtn: {
+    backgroundColor: '#2b5fff',
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addInterimBtnText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  interimDateRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#e8f0fe',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginBottom: 6,
+  },
+  removeInterimBtn: {
+    color: '#2b5fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    paddingLeft: 4,
+  },
+
+  // Detail Modal Extras
+  detailModalContainer: {
+    width: isMobile ? '100%' : '70%',
+    maxWidth: 700,
+    maxHeight: '95%',
+    backgroundColor: 'white',
+    borderRadius: isMobile ? 0 : 15,
+    overflow: 'hidden',
+  },
+  detailModalHeader: {
+    padding: isMobile ? 15 : 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    borderTopWidth: 4,
+  },
+  detailModalTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  detailModalTitle: {
+    fontSize: isMobile ? 20 : 24,
+    fontWeight: 'bold',
+    color: '#0a0f33',
+    flex: 1,
+    marginRight: 10,
+  },
+  detailModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  detailActionsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  editBtn: {
+    padding: 14,
+    borderRadius: 10,
+    backgroundColor: '#2b5fff',
+    alignItems: 'center',
+  },
+  editBtnText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  deleteBtn: {
+    padding: 14,
+    borderRadius: 10,
+    backgroundColor: '#dc3545',
+    alignItems: 'center',
+    minWidth: 50,
+  },
+  deleteBtnText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  detailSection: {
+    marginBottom: 24,
+  },
+  detailSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  detailSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#0a0f33',
+  },
+  dateInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  dateInfoItem: {
+    flex: 1,
+    backgroundColor: '#f9f9f9',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  dateInfoLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  dateInfoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0a0f33',
+  },
+  dateArrow: {
+    fontSize: 18,
+    color: '#ccc',
+  },
+  interimDatesSection: {
+    marginTop: 12,
+    gap: 6,
+  },
+  interimDatesLabel: {
+    fontSize: 12,
+    color: '#999',
+    marginBottom: 4,
+  },
+  taskStatsRow: {
+    flexDirection: 'row',
+    gap: 20,
+  },
+  taskStatItem: {
+    alignItems: 'center',
+  },
+  taskStatNumber: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#0a0f33',
+  },
+  taskStatLabel: {
+    fontSize: 11,
+    color: '#666',
+  },
+
+  // Member Row (Detail Modal)
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    gap: 12,
+  },
+  memberAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#2b5fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  memberAvatarText: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  memberRole: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 1,
+  },
+  removeMemberBtn: {
+    fontSize: 18,
+    color: '#dc3545',
+    fontWeight: 'bold',
+    paddingHorizontal: 6,
+  },
+  addMemberBtn: {
+    backgroundColor: '#e8f5e9',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  addMemberBtnText: {
+    color: '#28a745',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  emptyText: {
+    fontSize: 13,
+    color: '#bbb',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  addTaskBtn: {
+    backgroundColor: '#e3f2fd',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  addTaskBtnText: {
+    color: '#2b5fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  // TaskBoard
+  taskBoard: {
+    marginHorizontal: -20,
+  },
+  taskCountBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 12,
+    backgroundColor: '#e0e0e0',
+  },
+  taskCountText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+  },
+  emptyColumnContainer: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  emptyColumnText: {
+    fontSize: 12,
+    color: '#ccc',
+  },
+
+  // Task Card Extras
+  taskCard: {
+    backgroundColor: 'white',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderLeftWidth: 4,
+    borderLeftColor: '#2b5fff',
+  },
+  taskPriorityStripe: {},
+  taskCardBody: {
+    gap: 6,
+  },
+  taskCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  taskTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0a0f33',
+    flex: 1,
+  },
+  taskCardActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  taskActionBtn: {
+    padding: 4,
+    borderRadius: 6,
+  },
+  taskActionIcon: {
+    fontSize: 14,
+  },
+  taskDescription: {
+    fontSize: 12,
+    color: '#666',
+    lineHeight: 17,
+    marginBottom: 8,
+  },
+  taskCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  priorityBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  priorityBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'white',
+  },
+  assigneeBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#6c757d',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  assigneeBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  taskDueDate: {
+    fontSize: 10,
+    color: '#999',
+  },
+  taskStatusBtn: {
+    backgroundColor: '#e0e0e0',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 6,
+  },
+  taskStatusBtnText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#666',
+  },
 });

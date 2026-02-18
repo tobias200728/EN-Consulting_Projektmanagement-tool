@@ -1,181 +1,260 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  Modal,
-  TouchableOpacity,
-  ScrollView,
-  SafeAreaView,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { styles } from '../../style/Projects.styles';
-import TaskBoard from './TaskBoard';
-import { MembersList } from './MemberManagement';
-
-const formatDate = (dateString) => {
-  if (!dateString) return 'Nicht festgelegt';
-  const date = new Date(dateString);
-  return date.toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
-};
-
-const getStatusLabel = (status) => {
-  const statusMap = {
-    'planning': 'Planung',
-    'in-progress': 'In Bearbeitung',
-    'completed': 'Abgeschlossen'
-  };
-  return statusMap[status] || status;
-};
+import React from "react";
+import { View, Text, ScrollView, TouchableOpacity, Modal } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { styles } from "../../style/Projects.styles";
 
 const ProjectDetailModal = ({
-  visible,
-  project,
-  projectMembers,
-  onClose,
-  onEdit,
-  onDelete,
-  onAddMember,
-  onRemoveMember,
-  onTaskCreate,
-  onTaskEdit,
-  onTaskStatusChange,
-  onTaskDelete,
-  canEdit,
-  canDelete,
-  canManageMembers,
-  isAdmin,
-}) => {
-  if (!project) return null;
+  visible, onClose, selectedProject, setSelectedProject,
+  projectMembers, isAdmin, canEditProject, canDeleteProject, canManageProjectMembers,
+  onOpenEditProject, onOpenAddMember, onDeleteProject,
+  onOpenTaskModal, onEditTask, onDeleteTask, onMoveTask, onRemoveMember,
+  getTasksByStatus, getStatusLabel, getImportanceColor, getImportanceLabel, formatDate
+}) => (
+  <Modal
+    animationType="fade"
+    transparent={true}
+    visible={visible}
+    onRequestClose={onClose}
+  >
+    <View style={styles.modalOverlay}>
+      <View style={styles.detailModalContent}>
+        <SafeAreaView edges={['top']} style={{ flex: 0, backgroundColor: 'white' }} />
+        <ScrollView>
+          {/* Header */}
+          <View style={styles.detailHeader}>
+            <TouchableOpacity onPress={onClose} style={styles.backButton}>
+              <Text style={styles.backButtonText}>← Zurück zu Projekte</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuButton}>
+              <Text style={styles.menuButtonText}>⋮</Text>
+            </TouchableOpacity>
+          </View>
 
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <SafeAreaView style={styles.modalContainer}>
-        <View style={styles.detailHeader}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="arrow-back" size={24} color="#333" />
-          </TouchableOpacity>
-          <Text style={styles.detailTitle}>{project.name}</Text>
-          <View style={{ width: 24 }} />
-        </View>
+          {/* Project Info */}
+          <View style={styles.projectInfo}>
+            <View style={styles.projectInfoHeader}>
+              <Text style={styles.detailTitle}>{selectedProject?.title}</Text>
+              <View style={[
+                styles.statusBadge,
+                selectedProject?.status === 'in-progress' && styles.statusInProgress,
+                selectedProject?.status === 'completed' && styles.statusCompleted,
+                selectedProject?.status === 'planning' && styles.statusPlanning
+              ]}>
+                <Text style={styles.statusText}>{getStatusLabel(selectedProject?.status)}</Text>
+              </View>
+            </View>
+            <Text style={styles.detailDescription}>{selectedProject?.description}</Text>
+          </View>
 
-        <ScrollView style={styles.detailContent}>
-          <View style={styles.detailSection}>
-            <View style={styles.statusBadgeContainer}>
-              <View style={[styles.statusBadge, styles[`status${project.status}`]]}>
-                <Text style={styles.statusBadgeText}>{getStatusLabel(project.status)}</Text>
+          {/* Stats Cards */}
+          <View style={styles.statsCards}>
+            <View style={styles.statCard}>
+              <Text style={styles.statCardLabel}>Fortschritt</Text>
+              <Text style={styles.statCardValue}>{selectedProject?.progress}%</Text>
+              <View style={styles.progressBarDetail}>
+                <View style={[styles.progressFillDetail, { width: `${selectedProject?.progress}%` }]} />
               </View>
             </View>
 
-            {project.description && (
-              <Text style={styles.detailDescription}>{project.description}</Text>
-            )}
-
-            <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
-                <Ionicons name="analytics-outline" size={24} color="#007AFF" />
-                <Text style={styles.statValue}>{project.progress}%</Text>
-                <Text style={styles.statLabel}>Fortschritt</Text>
-              </View>
-
-              <View style={styles.statCard}>
-                <Ionicons name="calendar-outline" size={24} color="#34C759" />
-                <Text style={styles.statValue}>{formatDate(project.start_date)}</Text>
-                <Text style={styles.statLabel}>Start</Text>
-              </View>
-
-              <View style={styles.statCard}>
-                <Ionicons name="flag-outline" size={24} color="#FF3B30" />
-                <Text style={styles.statValue}>{formatDate(project.end_date)}</Text>
-                <Text style={styles.statLabel}>Ende</Text>
-              </View>
-
-              <View style={styles.statCard}>
-                <Ionicons name="people-outline" size={24} color="#FF9500" />
-                <Text style={styles.statValue}>{projectMembers.length}</Text>
-                <Text style={styles.statLabel}>Team</Text>
-              </View>
-
-              <View style={styles.statCard}>
-                <Ionicons name="checkmark-done-outline" size={24} color="#5856D6" />
-                <Text style={styles.statValue}>
-                  {project.todos?.filter(t => t.status === 'completed').length || 0}/
-                  {project.todos?.length || 0}
-                </Text>
-                <Text style={styles.statLabel}>Tasks</Text>
-              </View>
-
-              {project.interim_dates && project.interim_dates.length > 0 && (
-                <View style={styles.statCard}>
-                  <Ionicons name="time-outline" size={24} color="#AF52DE" />
-                  <Text style={styles.statValue}>{project.interim_dates.length}</Text>
-                  <Text style={styles.statLabel}>Meilensteine</Text>
-                </View>
-              )}
+            <View style={styles.statCard}>
+              <Text style={styles.statCardLabel}>Startdatum</Text>
+              <Text style={styles.statCardValue}>{formatDate(selectedProject?.startDate || "")}</Text>
             </View>
 
-            {project.interim_dates && project.interim_dates.length > 0 && (
-              <View style={styles.milestonesSection}>
-                <Text style={styles.sectionTitle}>Meilensteine</Text>
-                {project.interim_dates.map((date, index) => (
-                  <View key={index} style={styles.milestoneItem}>
-                    <Ionicons name="flag" size={16} color="#AF52DE" />
-                    <Text style={styles.milestoneDate}>{formatDate(date)}</Text>
-                  </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statCardLabel}>Enddatum</Text>
+              <Text style={styles.statCardValue}>{formatDate(selectedProject?.endDate || "")}</Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <Text style={styles.statCardLabel}>Team</Text>
+              <Text style={styles.statCardValue}>{selectedProject?.teamMembers} Mitglieder</Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <Text style={styles.statCardLabel}>Tasks</Text>
+              <Text style={styles.statCardValue}>
+                {getTasksByStatus("completed").length}/{selectedProject?.tasks?.length || 0}
+              </Text>
+              <Text style={styles.statCardSubtext}>abgeschlossen</Text>
+            </View>
+
+            {selectedProject?.interimDates && selectedProject.interimDates.length > 0 && (
+              <View style={styles.statCard}>
+                <Text style={styles.statCardLabel}>Zwischentermine</Text>
+                {selectedProject.interimDates.slice(0, 3).map((date, index) => (
+                  <Text key={index} style={styles.statCardSubtext}>{formatDate(date)}</Text>
                 ))}
+                {selectedProject.interimDates.length > 3 && (
+                  <Text style={styles.statCardSubtext}>+{selectedProject.interimDates.length - 3} weitere</Text>
+                )}
               </View>
             )}
           </View>
 
-          {isAdmin && (
-            <View style={styles.detailSection}>
-              <MembersList
-                members={projectMembers}
-                onRemove={onRemoveMember}
-                canManage={canManageMembers}
-              />
+          {/* Team Members - nur für Admins */}
+          {isAdmin && projectMembers.length > 0 && (
+            <View style={styles.membersSection}>
+              <Text style={styles.membersSectionTitle}>Team Mitglieder</Text>
+              <View style={styles.membersList}>
+                {projectMembers.map((member, index) => {
+                  const displayName = member.user_name && member.user_name.trim() !== ""
+                    ? member.user_name
+                    : member.user_email;
+                  return (
+                    <View key={index} style={styles.memberItem}>
+                      <View style={styles.memberInfo}>
+                        <Text style={styles.memberIcon}>👤</Text>
+                        <View>
+                          <Text style={styles.memberName}>{displayName}</Text>
+                          {member.user_name && member.user_name.trim() !== "" && (
+                            <Text style={styles.memberEmail}>{member.user_email}</Text>
+                          )}
+                        </View>
+                      </View>
+                      {canManageProjectMembers && (
+                        <TouchableOpacity
+                          style={styles.removeMemberButton}
+                          onPress={() => onRemoveMember(member.user_id)}
+                        >
+                          <Text style={styles.removeMemberButtonText}>✕</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
             </View>
           )}
 
-          <View style={styles.detailSection}>
-            <TaskBoard
-              tasks={project.todos || []}
-              onTaskCreate={onTaskCreate}
-              onTaskEdit={onTaskEdit}
-              onTaskStatusChange={onTaskStatusChange}
-              onTaskDelete={onTaskDelete}
-            />
+          {/* Tasks Kanban */}
+          <View style={styles.tasksSection}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.tasksColumns}>
+                {/* To Do */}
+                <View style={styles.taskColumn}>
+                  <View style={styles.taskColumnHeader}>
+                    <Text style={styles.taskColumnTitle}>To Do</Text>
+                    <Text style={styles.taskColumnCount}>{getTasksByStatus("todo").length}</Text>
+                  </View>
+                  {getTasksByStatus("todo").map(task => (
+                    <View key={task.id} style={styles.taskItem}>
+                      <View style={styles.taskItemHeader}>
+                        <Text style={styles.taskItemName}>{task.name}</Text>
+                        <TouchableOpacity onPress={() => onEditTask(task)} style={styles.taskIconButton}>
+                          <Text style={styles.taskIcon}>✏️</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => onDeleteTask(task.id)} style={styles.taskIconButton}>
+                          <Text>🗑</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <View style={[styles.importanceBadge, { backgroundColor: getImportanceColor(task.importance) }]}>
+                        <Text style={styles.importanceBadgeText}>{getImportanceLabel(task.importance)}</Text>
+                      </View>
+                      {task.assignedTo && (
+                        <View style={styles.taskAssignee}>
+                          <Text style={styles.taskAssigneeIcon}>👤</Text>
+                          <Text style={styles.taskAssigneeText}>{task.assignedTo}</Text>
+                        </View>
+                      )}
+                      <View style={styles.taskMoveButtons}>
+                        <TouchableOpacity style={styles.moveButton} onPress={() => onMoveTask(task.id, "in-progress")}>
+                          <Text style={styles.moveButtonText}>→</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                  <TouchableOpacity style={styles.addTaskButton} onPress={onOpenTaskModal}>
+                    <Text style={styles.addTaskButtonText}>+ Task hinzufügen</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* In Progress */}
+                <View style={styles.taskColumn}>
+                  <View style={styles.taskColumnHeader}>
+                    <Text style={styles.taskColumnTitle}>In Progress</Text>
+                    <Text style={styles.taskColumnCount}>{getTasksByStatus("in-progress").length}</Text>
+                  </View>
+                  {getTasksByStatus("in-progress").map(task => (
+                    <View key={task.id} style={styles.taskItem}>
+                      <View style={styles.taskItemHeader}>
+                        <Text style={styles.taskItemName}>{task.name}</Text>
+                      </View>
+                      <View style={[styles.importanceBadge, { backgroundColor: getImportanceColor(task.importance) }]}>
+                        <Text style={styles.importanceBadgeText}>{getImportanceLabel(task.importance)}</Text>
+                      </View>
+                      {task.assignedTo && (
+                        <View style={styles.taskAssignee}>
+                          <Text style={styles.taskAssigneeIcon}>👤</Text>
+                          <Text style={styles.taskAssigneeText}>{task.assignedTo}</Text>
+                        </View>
+                      )}
+                      <View style={styles.taskMoveButtons}>
+                        <TouchableOpacity style={styles.moveButton} onPress={() => onMoveTask(task.id, "todo")}>
+                          <Text style={styles.moveButtonText}>←</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.moveButton} onPress={() => onMoveTask(task.id, "completed")}>
+                          <Text style={styles.moveButtonText}>→</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+
+                {/* Completed */}
+                <View style={styles.taskColumn}>
+                  <View style={styles.taskColumnHeader}>
+                    <Text style={styles.taskColumnTitle}>Completed</Text>
+                    <Text style={styles.taskColumnCount}>{getTasksByStatus("completed").length}</Text>
+                  </View>
+                  {getTasksByStatus("completed").map(task => (
+                    <View key={task.id} style={[styles.taskItem, styles.taskItemCompleted]}>
+                      <View style={styles.taskItemHeader}>
+                        <Text style={styles.taskItemName}>{task.name}</Text>
+                      </View>
+                      <View style={[styles.importanceBadge, { backgroundColor: getImportanceColor(task.importance) }]}>
+                        <Text style={styles.importanceBadgeText}>{getImportanceLabel(task.importance)}</Text>
+                      </View>
+                      {task.assignedTo && (
+                        <View style={styles.taskAssignee}>
+                          <Text style={styles.taskAssigneeIcon}>👤</Text>
+                          <Text style={styles.taskAssigneeText}>{task.assignedTo}</Text>
+                        </View>
+                      )}
+                      <View style={styles.taskMoveButtons}>
+                        <TouchableOpacity style={styles.moveButton} onPress={() => onMoveTask(task.id, "in-progress")}>
+                          <Text style={styles.moveButtonText}>←</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            {canEditProject && (
+              <TouchableOpacity style={styles.editButton} onPress={onOpenEditProject}>
+                <Text style={styles.editButtonText}>Bearbeiten</Text>
+              </TouchableOpacity>
+            )}
+            {canManageProjectMembers && (
+              <TouchableOpacity style={styles.addMemberButton} onPress={onOpenAddMember}>
+                <Text style={styles.addMemberButtonText}>Mitarbeiter hinzufügen</Text>
+              </TouchableOpacity>
+            )}
+            {canDeleteProject && (
+              <TouchableOpacity style={styles.deleteButton} onPress={onDeleteProject}>
+                <Text style={styles.deleteButtonText}>Löschen</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </ScrollView>
-
-        <View style={styles.detailActions}>
-          {canEdit && (
-            <TouchableOpacity style={styles.actionButton} onPress={onEdit}>
-              <Ionicons name="create-outline" size={20} color="#007AFF" />
-              <Text style={styles.actionButtonText}>Bearbeiten</Text>
-            </TouchableOpacity>
-          )}
-
-          {canManageMembers && (
-            <TouchableOpacity style={styles.actionButton} onPress={onAddMember}>
-              <Ionicons name="person-add-outline" size={20} color="#34C759" />
-              <Text style={styles.actionButtonText}>Mitglied</Text>
-            </TouchableOpacity>
-          )}
-
-          {canDelete && (
-            <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} onPress={onDelete}>
-              <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-              <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Löschen</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </SafeAreaView>
-    </Modal>
-  );
-};
+      </View>
+    </View>
+  </Modal>
+);
 
 export default ProjectDetailModal;
