@@ -1,8 +1,3 @@
-"""
-EN-Consulting API - Main Application
-Strukturierte Version mit separaten Route-Modulen
-"""
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import models
