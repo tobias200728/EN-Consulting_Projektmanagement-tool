@@ -50,10 +50,12 @@ const Projects = () => {
     interim_dates: []
   });
 
+  // ✅ dueDate zu newTask hinzugefügt
   const [newTask, setNewTask] = useState({
     name: "",
     importance: "medium",
-    assignedTo: ""
+    assignedTo: "",
+    dueDate: ""
   });
 
   const { alert, showSuccess, showError, showInfo, showConfirm, hideAlert } = useAlert();
@@ -398,7 +400,8 @@ const Projects = () => {
               name: t.title,
               status: t.status,
               importance: t.priority,
-              assignedTo: t.assignee?.name || null
+              assignedTo: t.assignee?.name || null,
+              dueDate: t.due_date || ""   // ✅ dueDate aus Backend laden
             }));
           }
         } catch (e) {}
@@ -445,7 +448,8 @@ const Projects = () => {
   };
 
   const openTaskModal = () => {
-    setNewTask({ name: "", importance: "medium", assignedTo: "" });
+    // ✅ dueDate beim Öffnen zurücksetzen
+    setNewTask({ name: "", importance: "medium", assignedTo: "", dueDate: "" });
     setTaskModalVisible(true);
   };
   const closeTaskModal = () => setTaskModalVisible(false);
@@ -462,6 +466,11 @@ const Projects = () => {
   const handleSaveTask = async () => {
     if (!newTask.name.trim()) { showInfo("Fehler", "Bitte gib einen Task-Namen ein!"); return; }
     if (!newTask.assignedTo) { showInfo("Fehler", "Bitte weise den Task einem Mitarbeiter zu!"); return; }
+    // ✅ Datum-Validierung
+    if (!newTask.dueDate || !newTask.dueDate.trim()) {
+      showInfo("Fehler", "Bitte gib ein Fälligkeitsdatum ein!");
+      return;
+    }
 
     try {
       setLoading(true);
@@ -474,7 +483,8 @@ const Projects = () => {
           body: JSON.stringify({
             title: newTask.name,
             priority: newTask.importance,
-            assigned_to: parseInt(newTask.assignedTo)
+            assigned_to: parseInt(newTask.assignedTo),
+            due_date: newTask.dueDate   // ✅ due_date mitsenden
           }),
         }
       );
@@ -485,12 +495,13 @@ const Projects = () => {
           name: data.todo.title,
           status: data.todo.status,
           importance: data.todo.priority,
-          assignedTo: data.todo.assignee?.name || null
+          assignedTo: data.todo.assignee?.name || null,
+          dueDate: data.todo.due_date || ""   // ✅ dueDate speichern
         }, ...selectedProject.tasks];
         updateProjectEverywhere(selectedProject.id, updatedTasks);
         closeTaskModal();
       } else {
-        showError("Fehler", "Task konnte nicht erstellt werden");
+        showError("Fehler", data.detail || "Task konnte nicht erstellt werden");
       }
     } catch (e) {
       showError("Fehler", "Server nicht erreichbar");
@@ -500,6 +511,11 @@ const Projects = () => {
   };
 
   const handleUpdateTask = async () => {
+    if (!editingTask.dueDate || !editingTask.dueDate.trim()) {
+      showInfo("Fehler", "Bitte gib ein Fälligkeitsdatum ein!");
+      return;
+    }
+
     try {
       setLoading(true);
       const id = await AsyncStorage.getItem("user_id");
@@ -508,14 +524,24 @@ const Projects = () => {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: editingTask.name, priority: editingTask.importance }),
+          body: JSON.stringify({
+            title: editingTask.name,
+            priority: editingTask.importance,
+            due_date: editingTask.dueDate   // ✅ due_date beim Update mitsenden
+          }),
         }
       );
       const data = await response.json();
       if (response.ok && data.status === "ok") {
         const updatedTasks = selectedProject.tasks.map(t =>
           t.id === editingTask.id
-            ? { ...t, name: data.todo.title, importance: data.todo.priority, status: data.todo.status }
+            ? {
+                ...t,
+                name: data.todo.title,
+                importance: data.todo.priority,
+                status: data.todo.status,
+                dueDate: data.todo.due_date || ""
+              }
             : t
         );
         updateProjectEverywhere(selectedProject.id, updatedTasks);

@@ -28,6 +28,16 @@ const NewTaskModal = ({
           </View>
 
           <View style={styles.formGroup}>
+            <Text style={styles.label}>Fälligkeitsdatum *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="YYYY-MM-DD (z.B. 2026-03-15)"
+              value={newTask.dueDate}
+              onChangeText={(text) => setNewTask({ ...newTask, dueDate: text })}
+            />
+          </View>
+
+          <View style={styles.formGroup}>
             <Text style={styles.label}>Wichtigkeit</Text>
             <View style={styles.statusButtons}>
               <TouchableOpacity
@@ -105,9 +115,12 @@ const NewTaskModal = ({
               <Text style={styles.cancelButtonText}>Abbrechen</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.saveButton, (loading || projectMembers.length === 0 || !newTask.assignedTo) && styles.saveButtonDisabled]}
+              style={[
+                styles.saveButton,
+                (loading || projectMembers.length === 0 || !newTask.assignedTo || !newTask.dueDate) && styles.saveButtonDisabled
+              ]}
               onPress={onSave}
-              disabled={loading || projectMembers.length === 0 || !newTask.assignedTo}
+              disabled={loading || projectMembers.length === 0 || !newTask.assignedTo || !newTask.dueDate}
             >
               <Text style={styles.saveButtonText}>
                 {loading ? "Wird erstellt..." : "Task erstellen"}
