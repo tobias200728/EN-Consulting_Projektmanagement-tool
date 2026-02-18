@@ -1172,4 +1172,17 @@ helperText: {
   menuItemTextDanger: {
     color: "#dc3545",
   },
+  imageButton: {
+  flex: 1,
+  minWidth: isMobile ? "100%" : 100,
+  padding: 14,
+  borderRadius: 10,
+  backgroundColor: "#6f42c1",
+  alignItems: "center",
+},
+imageButtonText: {
+  color: "white",
+  fontWeight: "600",
+  fontSize: 15,
+},
 });

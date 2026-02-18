@@ -111,7 +111,19 @@ class ProjectTodo(Base):
     assignee = relationship("Users", foreign_keys=[assigned_to])
     creator = relationship("Users", foreign_keys=[created_by])
 
+class ProjectImage(Base):
+    __tablename__ = 'project_images'
 
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey('projects.id'), nullable=False)
+    image_data = Column(LargeBinary, nullable=False)
+    filename = Column(String(255), nullable=True)
+    uploaded_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+
+    project = relationship("Project")
+    uploader = relationship("Users")
+    
 class UserTodo(Base):
     __tablename__ = 'user_todos'
 

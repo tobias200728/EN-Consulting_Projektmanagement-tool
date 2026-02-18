@@ -4,7 +4,8 @@ import models
 from database import engine
 
 # Route Imports
-from routes import users, auth, projects, project_members, project_todos, user_todos, contracts
+from routes import users, auth, projects, project_members, project_todos, user_todos, contracts, project_images
+
 # Erstelle Datenbank-Tabellen
 models.Base.metadata.create_all(bind=engine)
 
@@ -20,6 +21,7 @@ app = FastAPI(
         {"name": "Project Members"},
         {"name": "Project TODOs"},
         {"name": "User TODOs"},
+        {"name": "Project Images"},
     ]
 )
 
@@ -34,6 +36,7 @@ app.add_middleware(
 
 # Router Includes
 app.include_router(users.router)
+app.include_router(project_images.router)
 app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(project_members.router)
