@@ -50,7 +50,6 @@ const Projects = () => {
     interim_dates: []
   });
 
-  // ✅ dueDate zu newTask hinzugefügt
   const [newTask, setNewTask] = useState({
     name: "",
     importance: "medium",
@@ -116,6 +115,13 @@ const Projects = () => {
     }
   };
 
+  const calculateProgressFromTodos = (tasks = []) => {
+    if (tasks.length === 0) return 0;
+    const completed = tasks.filter(t => t.status === "completed").length;
+    return Math.round((completed / tasks.length) * 100);
+  };
+
+  // ✅ FIX: Todos für jedes Projekt laden und Fortschritt korrekt berechnen
   const loadProjects = async () => {
     try {
       const id = await AsyncStorage.getItem('user_id');
@@ -131,6 +137,9 @@ const Projects = () => {
         const formattedProjects = await Promise.all(
           data.projects.map(async (p) => {
             let memberCount = 0;
+            let todos = [];
+
+            // Lade Member-Anzahl
             try {
               const membersResponse = await fetch(`${API_URL}/projects/${p.id}/members?user_id=${id}`);
               const membersData = await membersResponse.json();
@@ -140,17 +149,39 @@ const Projects = () => {
             } catch (error) {
               console.log(`Could not load members for project ${p.id}`);
             }
+
+            // ✅ FIX: Lade Todos und berechne Fortschritt
+            try {
+              const todosResponse = await fetch(`${API_URL}/projects/${p.id}/todos?user_id=${id}`);
+              const todosData = await todosResponse.json();
+              if (todosResponse.ok && todosData.status === "ok") {
+                todos = todosData.todos.map(t => ({
+                  id: t.id,
+                  name: t.title,
+                  status: t.status,
+                  importance: t.priority,
+                  assignedTo: t.assignee?.name || null,
+                  dueDate: t.due_date || ""
+                }));
+              }
+            } catch (error) {
+              console.log(`Could not load todos for project ${p.id}`);
+            }
+
+            // ✅ Fortschritt aus Todos berechnen (nicht vom Backend übernehmen)
+            const calculatedProgress = calculateProgressFromTodos(todos);
+
             return {
               id: p.id,
               title: p.name,
               description: p.description,
-              progress: p.progress,
+              progress: calculatedProgress, // ✅ Berechneter Fortschritt
               startDate: p.start_date,
               endDate: p.end_date,
               interimDates: p.interim_dates || [],
               teamMembers: memberCount,
               status: p.status,
-              tasks: p.tasks || []
+              tasks: todos // ✅ Tasks mitgeben damit Detail-Modal sie sofort hat
             };
           })
         );
@@ -313,6 +344,43 @@ const Projects = () => {
     }
   };
 
+  const handleUpdateInterimDates = async (newInterimDates) => {
+    if (!selectedProject) return;
+    try {
+      const id = await AsyncStorage.getItem('user_id');
+      const response = await fetch(
+        `${API_URL}/projects/${selectedProject.id}?user_id=${id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: selectedProject.title,
+            description: selectedProject.description,
+            status: selectedProject.status,
+            progress: selectedProject.progress,
+            start_date: selectedProject.startDate,
+            end_date: selectedProject.endDate,
+            interim_dates: newInterimDates
+          }),
+        }
+      );
+      const data = await response.json();
+      if (response.ok && data.status === "ok") {
+        // Update selectedProject and projectsList locally
+        const updated = { ...selectedProject, interimDates: newInterimDates };
+        setSelectedProject(updated);
+        setProjectsList(prev =>
+          prev.map(p => p.id === selectedProject.id ? { ...p, interimDates: newInterimDates } : p)
+        );
+        showSuccess("Erfolg", "Zwischentermine wurden gespeichert!");
+      } else {
+        showError("Fehler", "Zwischentermine konnten nicht gespeichert werden");
+      }
+    } catch (error) {
+      showError("Fehler", "Verbindung zum Server fehlgeschlagen");
+    }
+  };
+
   const handleDeleteProject = async () => {
     showConfirm(
       "Projekt löschen",
@@ -347,19 +415,13 @@ const Projects = () => {
     );
   };
 
-  const calculateProgressFromTodos = (tasks = []) => {
-    if (tasks.length === 0) return 0;
-    const completed = tasks.filter(t => t.status === "completed").length;
-    return Math.round((completed / tasks.length) * 100);
-  };
-
   const updateProjectEverywhere = (projectId, updatedTasks) => {
     const newProgress = calculateProgressFromTodos(updatedTasks);
     setSelectedProject(prev =>
       prev && prev.id === projectId ? { ...prev, tasks: updatedTasks, progress: newProgress } : prev
     );
     setProjectsList(prev =>
-      prev.map(p => p.id === projectId ? { ...p, progress: newProgress } : p)
+      prev.map(p => p.id === projectId ? { ...p, tasks: updatedTasks, progress: newProgress } : p)
     );
   };
 
@@ -370,6 +432,7 @@ const Projects = () => {
   };
   const closeModal = () => setModalVisible(false);
 
+  // ✅ FIX: openProjectDetail nutzt bereits geladene Tasks aus projectsList
   const openProjectDetail = async (project) => {
     try {
       setLoading(true);
@@ -381,7 +444,6 @@ const Projects = () => {
 
       if (response.ok && data.status === "ok") {
         let memberCount = 0;
-        let todos = [];
 
         try {
           const membersResponse = await fetch(`${API_URL}/projects/${project.id}/members?user_id=${id}`);
@@ -391,20 +453,27 @@ const Projects = () => {
           }
         } catch (e) {}
 
-        try {
-          const todosResponse = await fetch(`${API_URL}/projects/${project.id}/todos?user_id=${id}`);
-          const todosData = await todosResponse.json();
-          if (todosResponse.ok && todosData.status === "ok") {
-            todos = todosData.todos.map(t => ({
-              id: t.id,
-              name: t.title,
-              status: t.status,
-              importance: t.priority,
-              assignedTo: t.assignee?.name || null,
-              dueDate: t.due_date || ""   // ✅ dueDate aus Backend laden
-            }));
-          }
-        } catch (e) {}
+        // ✅ Nutze bereits geladene Tasks aus der Projektliste (haben korrekte Fortschrittsberechnung)
+        // Lade nur neu wenn nötig
+        let todos = project.tasks || [];
+
+        // Wenn tasks leer, nochmal laden
+        if (todos.length === 0) {
+          try {
+            const todosResponse = await fetch(`${API_URL}/projects/${project.id}/todos?user_id=${id}`);
+            const todosData = await todosResponse.json();
+            if (todosResponse.ok && todosData.status === "ok") {
+              todos = todosData.todos.map(t => ({
+                id: t.id,
+                name: t.title,
+                status: t.status,
+                importance: t.priority,
+                assignedTo: t.assignee?.name || null,
+                dueDate: t.due_date || ""
+              }));
+            }
+          } catch (e) {}
+        }
 
         setSelectedProject({
           id: data.project.id,
@@ -448,7 +517,6 @@ const Projects = () => {
   };
 
   const openTaskModal = () => {
-    // ✅ dueDate beim Öffnen zurücksetzen
     setNewTask({ name: "", importance: "medium", assignedTo: "", dueDate: "" });
     setTaskModalVisible(true);
   };
@@ -466,7 +534,6 @@ const Projects = () => {
   const handleSaveTask = async () => {
     if (!newTask.name.trim()) { showInfo("Fehler", "Bitte gib einen Task-Namen ein!"); return; }
     if (!newTask.assignedTo) { showInfo("Fehler", "Bitte weise den Task einem Mitarbeiter zu!"); return; }
-    // ✅ Datum-Validierung
     if (!newTask.dueDate || !newTask.dueDate.trim()) {
       showInfo("Fehler", "Bitte gib ein Fälligkeitsdatum ein!");
       return;
@@ -484,7 +551,7 @@ const Projects = () => {
             title: newTask.name,
             priority: newTask.importance,
             assigned_to: parseInt(newTask.assignedTo),
-            due_date: newTask.dueDate   // ✅ due_date mitsenden
+            due_date: newTask.dueDate
           }),
         }
       );
@@ -496,7 +563,7 @@ const Projects = () => {
           status: data.todo.status,
           importance: data.todo.priority,
           assignedTo: data.todo.assignee?.name || null,
-          dueDate: data.todo.due_date || ""   // ✅ dueDate speichern
+          dueDate: data.todo.due_date || ""
         }, ...selectedProject.tasks];
         updateProjectEverywhere(selectedProject.id, updatedTasks);
         closeTaskModal();
@@ -527,7 +594,7 @@ const Projects = () => {
           body: JSON.stringify({
             title: editingTask.name,
             priority: editingTask.importance,
-            due_date: editingTask.dueDate   // ✅ due_date beim Update mitsenden
+            due_date: editingTask.dueDate
           }),
         }
       );
@@ -728,6 +795,7 @@ const Projects = () => {
         canEditProject={canEditProject}
         canDeleteProject={canDeleteProject}
         canManageProjectMembers={canManageProjectMembers}
+        onUpdateInterimDates={handleUpdateInterimDates}
         onOpenEditProject={() => setEditProjectModalVisible(true)}
         onOpenAddMember={openAddMemberModal}
         onDeleteProject={handleDeleteProject}

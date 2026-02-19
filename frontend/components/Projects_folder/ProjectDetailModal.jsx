@@ -7,6 +7,7 @@ import {
   Modal,
   Image,
   ActivityIndicator,
+  TextInput,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -118,7 +119,7 @@ const ImageGalleryModal = ({ visible, onClose, project, isAdmin }) => {
           {/* Header */}
           <View style={galleryStyles.header}>
             <View>
-              <Text style={galleryStyles.title}>📸 Projektbilder</Text>
+              <Text style={galleryStyles.title}>Projektbilder</Text>
               <Text style={galleryStyles.subtitle}>
                 {project?.title || "Projekt"}
               </Text>
@@ -161,7 +162,7 @@ const ImageGalleryModal = ({ visible, onClose, project, isAdmin }) => {
             </View>
           ) : images.length === 0 ? (
             <View style={galleryStyles.center}>
-              <Text style={galleryStyles.emptyIcon}>🖼️</Text>
+              <Text style={galleryStyles.emptyIcon}></Text>
               <Text style={galleryStyles.emptyTitle}>Keine Bilder vorhanden</Text>
               <Text style={galleryStyles.emptyText}>
                 Füge das erste Bild zu diesem Projekt hinzu
@@ -223,7 +224,7 @@ const ImageGalleryModal = ({ visible, onClose, project, isAdmin }) => {
                 onPress={() => handleDelete(selectedImage.id)}
               >
                 <Text style={galleryStyles.fullscreenDeleteText}>
-                  🗑️ Bild löschen
+                  Bild löschen
                 </Text>
               </TouchableOpacity>
             )}
@@ -408,6 +409,196 @@ const galleryStyles = StyleSheet.create({
   },
 });
 
+// ─── Interim Dates Section ─────────────────────────────────────────────────────
+const interimStyles = StyleSheet.create({
+  section: {
+    marginHorizontal: isMobile ? 12 : 20,
+    marginBottom: 20,
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 18,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+    gap: 8,
+  },
+  sectionIcon: {
+    fontSize: 18,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0a0f33",
+  },
+  timeline: {
+    paddingLeft: 8,
+  },
+  timelineItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 12,
+  },
+  timelineDotContainer: {
+    alignItems: "center",
+    width: 28,
+    marginRight: 12,
+  },
+  timelineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#2b5fff",
+    marginTop: 3,
+  },
+  timelineDotPast: {
+    backgroundColor: "#28a745",
+  },
+  timelineDotFuture: {
+    backgroundColor: "#2b5fff",
+  },
+  timelineLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: "#e0e0e0",
+    marginTop: 4,
+    minHeight: 16,
+  },
+  timelineContent: {
+    flex: 1,
+    backgroundColor: "#f8f9ff",
+    borderRadius: 10,
+    padding: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: "#2b5fff",
+  },
+  timelineContentPast: {
+    borderLeftColor: "#28a745",
+    backgroundColor: "#f0fff4",
+  },
+  timelineDate: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#2b5fff",
+    marginBottom: 2,
+  },
+  timelineDatePast: {
+    color: "#28a745",
+  },
+  timelineLabel: {
+    fontSize: 12,
+    color: "#666",
+  },
+  timelineBadge: {
+    alignSelf: "flex-start",
+    marginTop: 4,
+    backgroundColor: "#e8f5e9",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  timelineBadgeText: {
+    fontSize: 10,
+    color: "#28a745",
+    fontWeight: "600",
+  },
+  emptyText: {
+    fontSize: 13,
+    color: "#999",
+    fontStyle: "italic",
+    textAlign: "center",
+    paddingVertical: 10,
+  },
+});
+
+// Helper: format date nicely
+const formatDateLong = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  const months = [
+    "Januar", "Februar", "März", "April", "Mai", "Juni",
+    "Juli", "August", "September", "Oktober", "November", "Dezember"
+  ];
+  const days = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
+  return `${days[date.getDay()]}, ${date.getDate()}. ${months[date.getMonth()]} ${date.getFullYear()}`;
+};
+
+// ─── InterimDatesSection Component ────────────────────────────────────────────
+const InterimDatesSection = ({ interimDates, startDate, endDate }) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const allDates = [
+    { date: startDate, label: "Projektstart", type: "start" },
+    ...(interimDates || []).map((d, i) => ({
+      date: d,
+      label: `Zwischentermin ${i + 1}`,
+      type: "interim",
+    })),
+    { date: endDate, label: "Projektende", type: "end" },
+  ].filter((d) => d.date);
+
+  return (
+    <View style={interimStyles.section}>
+      <View style={interimStyles.sectionHeader}>
+        <Text style={interimStyles.sectionIcon}>📅</Text>
+        <Text style={interimStyles.sectionTitle}>Projektzeitplan</Text>
+      </View>
+
+      {allDates.length === 0 ? (
+        <Text style={interimStyles.emptyText}>Keine Termine vorhanden</Text>
+      ) : (
+        <View style={interimStyles.timeline}>
+          {allDates.map((item, index) => {
+            const itemDate = new Date(item.date);
+            const isPast = itemDate < today;
+            const isLast = index === allDates.length - 1;
+
+            const dotStyle = [
+              interimStyles.timelineDot,
+              isPast ? interimStyles.timelineDotPast : interimStyles.timelineDotFuture,
+            ];
+
+            const contentStyle = [
+              interimStyles.timelineContent,
+              isPast && interimStyles.timelineContentPast,
+            ];
+
+            const dateStyle = [
+              interimStyles.timelineDate,
+              isPast && interimStyles.timelineDatePast,
+            ];
+
+            return (
+              <View key={index} style={interimStyles.timelineItem}>
+                <View style={interimStyles.timelineDotContainer}>
+                  <View style={dotStyle} />
+                  {!isLast && <View style={interimStyles.timelineLine} />}
+                </View>
+                <View style={contentStyle}>
+                  <Text style={dateStyle}>{formatDateLong(item.date)}</Text>
+                  <Text style={interimStyles.timelineLabel}>{item.label}</Text>
+                  {isPast && (
+                    <View style={interimStyles.timelineBadge}>
+                      <Text style={interimStyles.timelineBadgeText}>✓ Vergangen</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+};
+
 // ─── Main ProjectDetailModal ───────────────────────────────────────────────────
 const ProjectDetailModal = ({
   visible,
@@ -431,9 +622,47 @@ const ProjectDetailModal = ({
   getImportanceColor,
   getImportanceLabel,
   formatDate,
+  onUpdateInterimDates,
 }) => {
   const [menuVisible, setMenuVisible] = useState(false);
   const [imageGalleryVisible, setImageGalleryVisible] = useState(false);
+  const [interimModalVisible, setInterimModalVisible] = useState(false);
+  const [newInterimDate, setNewInterimDate] = useState("");
+  const [interimDates, setInterimDates] = useState([]);
+  const [savingInterim, setSavingInterim] = useState(false);
+
+  // Sync interimDates with selectedProject whenever it changes
+  React.useEffect(() => {
+    if (selectedProject?.interimDates) {
+      setInterimDates([...selectedProject.interimDates].sort());
+    }
+  }, [selectedProject?.interimDates]);
+
+  const openInterimModal = () => {
+    setInterimDates(selectedProject?.interimDates ? [...selectedProject.interimDates].sort() : []);
+    setNewInterimDate("");
+    setInterimModalVisible(true);
+  };
+
+  const addInterimDate = () => {
+    const trimmed = newInterimDate.trim();
+    if (!trimmed) return;
+    if (interimDates.includes(trimmed)) return;
+    setInterimDates([...interimDates, trimmed].sort());
+    setNewInterimDate("");
+  };
+
+  const removeInterimDate = (date) => {
+    setInterimDates(interimDates.filter(d => d !== date));
+  };
+
+  const saveInterimDates = async () => {
+    if (!onUpdateInterimDates) return;
+    setSavingInterim(true);
+    await onUpdateInterimDates(interimDates);
+    setSavingInterim(false);
+    setInterimModalVisible(false);
+  };
 
   return (
     <Modal
@@ -470,8 +699,6 @@ const ProjectDetailModal = ({
                   onPress={() => setMenuVisible(false)}
                 />
                 <View style={styles.menuDropdown}>
-
-
                   {canEditProject && (
                     <TouchableOpacity
                       style={[styles.menuItem, styles.menuItemBorder]}
@@ -504,8 +731,20 @@ const ProjectDetailModal = ({
                       setImageGalleryVisible(true);
                     }}
                   >
-                  <Text style={styles.menuItemText}>Bilder</Text>
+                    <Text style={styles.menuItemText}>Bilder</Text>
                   </TouchableOpacity>
+
+                  {canEditProject && (
+                    <TouchableOpacity
+                      style={[styles.menuItem, styles.menuItemBorder]}
+                      onPress={() => {
+                        setMenuVisible(false);
+                        openInterimModal();
+                      }}
+                    >
+                      <Text style={styles.menuItemText}>Zwischentermine hinzufügen</Text>
+                    </TouchableOpacity>
+                  )}
 
                   {canDeleteProject && (
                     <TouchableOpacity
@@ -595,23 +834,27 @@ const ProjectDetailModal = ({
                 <Text style={styles.statCardSubtext}>abgeschlossen</Text>
               </View>
 
+              {/* ── Zwischentermine count card ── */}
               {selectedProject?.interimDates &&
                 selectedProject.interimDates.length > 0 && (
                   <View style={styles.statCard}>
                     <Text style={styles.statCardLabel}>Zwischentermine</Text>
-                    {selectedProject.interimDates.slice(0, 3).map((date, index) => (
-                      <Text key={index} style={styles.statCardSubtext}>
-                        {formatDate(date)}
-                      </Text>
-                    ))}
-                    {selectedProject.interimDates.length > 3 && (
-                      <Text style={styles.statCardSubtext}>
-                        +{selectedProject.interimDates.length - 3} weitere
-                      </Text>
-                    )}
+                    <Text style={styles.statCardValue}>
+                      {selectedProject.interimDates.length}
+                    </Text>
+                    <Text style={styles.statCardSubtext}>geplant</Text>
                   </View>
                 )}
             </View>
+
+            {/* ── ✅ NEU: Projektzeitplan mit Zwischenterminen ── */}
+            {selectedProject && (
+              <InterimDatesSection
+                interimDates={selectedProject.interimDates}
+                startDate={selectedProject.startDate}
+                endDate={selectedProject.endDate}
+              />
+            )}
 
             {/* ── Team Mitglieder ── */}
             {isAdmin && projectMembers.length > 0 && (
@@ -681,6 +924,11 @@ const ProjectDetailModal = ({
                             <Text>🗑</Text>
                           </TouchableOpacity>
                         </View>
+                        {task.dueDate && (
+                          <Text style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>
+                            📅 {task.dueDate}
+                          </Text>
+                        )}
                         <View
                           style={[
                             styles.importanceBadge,
@@ -730,6 +978,11 @@ const ProjectDetailModal = ({
                         <View style={styles.taskItemHeader}>
                           <Text style={styles.taskItemName}>{task.name}</Text>
                         </View>
+                        {task.dueDate && (
+                          <Text style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>
+                            📅 {task.dueDate}
+                          </Text>
+                        )}
                         <View
                           style={[
                             styles.importanceBadge,
@@ -782,6 +1035,11 @@ const ProjectDetailModal = ({
                         <View style={styles.taskItemHeader}>
                           <Text style={styles.taskItemName}>{task.name}</Text>
                         </View>
+                        {task.dueDate && (
+                          <Text style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>
+                            📅 {task.dueDate}
+                          </Text>
+                        )}
                         <View
                           style={[
                             styles.importanceBadge,
@@ -819,6 +1077,92 @@ const ProjectDetailModal = ({
         </View>
       </View>
 
+      {/* ── Zwischentermine Modal ── */}
+      <Modal
+        animationType="fade"
+        transparent
+        visible={interimModalVisible}
+        onRequestClose={() => setInterimModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Zwischentermine</Text>
+              <TouchableOpacity
+                onPress={() => setInterimModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView>
+              {/* Existing dates */}
+              {interimDates.length > 0 ? (
+                <View style={interimModalStyles.datesList}>
+                  {interimDates.map((date, index) => (
+                    <View key={index} style={interimModalStyles.dateRow}>
+                      <View style={interimModalStyles.dateBadge}>
+                        <Text style={interimModalStyles.dateBadgeIcon}></Text>
+                        <Text style={interimModalStyles.dateText}>{date}</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={interimModalStyles.removeBtn}
+                        onPress={() => removeInterimDate(date)}
+                      >
+                        <Text style={interimModalStyles.removeBtnText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={interimModalStyles.emptyHint}>
+                  <Text style={interimModalStyles.emptyHintText}>
+                    Noch keine Zwischentermine vorhanden
+                  </Text>
+                </View>
+              )}
+
+              {/* Add new date */}
+              <View style={interimModalStyles.addRow}>
+                <TextInput
+                  style={interimModalStyles.input}
+                  placeholder="YYYY-MM-DD (z.B. 2026-06-15)"
+                  value={newInterimDate}
+                  onChangeText={setNewInterimDate}
+                />
+                <TouchableOpacity
+                  style={[interimModalStyles.addBtn, !newInterimDate.trim() && interimModalStyles.addBtnDisabled]}
+                  onPress={addInterimDate}
+                  disabled={!newInterimDate.trim()}
+                >
+                  <Text style={interimModalStyles.addBtnText}>+</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Save / Cancel */}
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setInterimModalVisible(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Abbrechen</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.saveButton, savingInterim && styles.saveButtonDisabled]}
+                  onPress={saveInterimDates}
+                  disabled={savingInterim}
+                >
+                  <Text style={styles.saveButtonText}>
+                    {savingInterim ? "Wird gespeichert..." : "Speichern"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* ── Image Gallery Modal ── */}
       {selectedProject && (
         <ImageGalleryModal
@@ -832,42 +1176,94 @@ const ProjectDetailModal = ({
   );
 };
 
-// ─── Image Button Styles ───────────────────────────────────────────────────────
-const imageButtonStyles = StyleSheet.create({
-  wrapper: {
-    paddingHorizontal: isMobile ? 12 : 20,
-    paddingVertical: 10,
+
+// ─── Interim Modal Styles ──────────────────────────────────────────────────────
+const interimModalStyles = StyleSheet.create({
+  datesList: {
+    marginBottom: 16,
+    gap: 8,
   },
-  btn: {
+  dateRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f0f4ff",
-    borderWidth: 1.5,
-    borderColor: "#c7d7ff",
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    gap: 10,
-  },
-  btnIcon: {
-    fontSize: 20,
-  },
-  btnText: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#2b5fff",
-  },
-  badge: {
-    backgroundColor: "#2b5fff",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    justifyContent: "space-between",
+    backgroundColor: "#fff8e1",
     borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "#ffe082",
   },
-  badgeText: {
+  dateBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  dateBadgeIcon: {
+    fontSize: 16,
+  },
+  dateText: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#0a0f33",
+  },
+  removeBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#ffebee",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  removeBtnText: {
+    color: "#dc3545",
+    fontWeight: "bold",
+    fontSize: 13,
+  },
+  emptyHint: {
+    alignItems: "center",
+    paddingVertical: 24,
+    backgroundColor: "#f9f9f9",
+    borderRadius: 10,
+    marginBottom: 16,
+  },
+  emptyHintText: {
+    color: "#999",
+    fontSize: 14,
+  },
+  addRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 20,
+    alignItems: "center",
+  },
+  input: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: "#0a0f33",
+  },
+  addBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: "#2b5fff",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  addBtnDisabled: {
+    backgroundColor: "#ccc",
+  },
+  addBtnText: {
     color: "white",
-    fontSize: 11,
+    fontSize: 24,
     fontWeight: "600",
+    lineHeight: 26,
   },
 });
 

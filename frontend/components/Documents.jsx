@@ -32,7 +32,6 @@ const Documents = () => {
     title: "",
     party_a: "EN-Consulting",
     party_b: "",
-    contract_value: "",
     currency: "EUR",
     start_date: "",
     end_date: "",
@@ -161,10 +160,6 @@ const Documents = () => {
     }
     if (!contractForm.party_b.trim()) {
       showInfo("Fehler", "Bitte gib Partei B (Auftraggeber) ein!");
-      return;
-    }
-    if (!contractForm.contract_value || contractForm.contract_value <= 0) {
-      showInfo("Fehler", "Bitte gib einen gültigen Vertragswert ein!");
       return;
     }
     if (!contractForm.start_date || !contractForm.end_date) {
@@ -357,7 +352,6 @@ const handleDownloadContract = async (contract) => {
       title: "",
       party_a: "EN-Consulting",
       party_b: "",
-      contract_value: "",
       currency: "EUR",
       start_date: "",
       end_date: "",
@@ -528,12 +522,6 @@ const handleDownloadContract = async (contract) => {
                     <Text style={styles.contractDetailValue}>{contract.party_b}</Text>
                   </View>
                   <View style={styles.contractDetailRow}>
-                    <Text style={styles.contractDetailLabel}>Vertragswert:</Text>
-                    <Text style={styles.contractDetailValue}>
-                      {formatCurrency(contract.contract_value, contract.currency)}
-                    </Text>
-                  </View>
-                  <View style={styles.contractDetailRow}>
                     <Text style={styles.contractDetailLabel}>Laufzeit:</Text>
                     <Text style={styles.contractDetailValue}>
                       {formatDate(contract.start_date)} - {formatDate(contract.end_date)}
@@ -638,12 +626,12 @@ const handleDownloadContract = async (contract) => {
                     ]}
                     onPress={() => setContractForm({...contractForm, document_type: "construction"})}
                   >
-                    <Text style={styles.documentTypeIcon}>🏗️</Text>
+                    <Text style={styles.documentTypeIcon}></Text>
                     <Text style={[
                       styles.documentTypeButtonText,
                       contractForm.document_type === "construction" && styles.documentTypeButtonTextActive
                     ]}>
-                      Tunnelbau
+                      Begehungsprotokoll
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -653,12 +641,12 @@ const handleDownloadContract = async (contract) => {
                     ]}
                     onPress={() => setContractForm({...contractForm, document_type: "maintenance"})}
                   >
-                    <Text style={styles.documentTypeIcon}>🔧</Text>
+                    <Text style={styles.documentTypeIcon}></Text>
                     <Text style={[
                       styles.documentTypeButtonText,
                       contractForm.document_type === "maintenance" && styles.documentTypeButtonTextActive
                     ]}>
-                      Wartung
+                      Mangel
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -668,12 +656,12 @@ const handleDownloadContract = async (contract) => {
                     ]}
                     onPress={() => setContractForm({...contractForm, document_type: "consulting"})}
                   >
-                    <Text style={styles.documentTypeIcon}>💼</Text>
+                    <Text style={styles.documentTypeIcon}></Text>
                     <Text style={[
                       styles.documentTypeButtonText,
                       contractForm.document_type === "consulting" && styles.documentTypeButtonTextActive
                     ]}>
-                      Beratung
+                      Besprechungsnotiz
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -710,39 +698,7 @@ const handleDownloadContract = async (contract) => {
                 />
               </View>
 
-              {/* Contract Value */}
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Vertragswert *</Text>
-                <View style={styles.currencyRow}>
-                  <TextInput
-                    style={[styles.input, styles.currencyInput]}
-                    placeholder="150000"
-                    keyboardType="numeric"
-                    value={contractForm.contract_value}
-                    onChangeText={(text) => setContractForm({...contractForm, contract_value: text})}
-                  />
-                  <View style={styles.currencyButtons}>
-                    <TouchableOpacity
-                      style={[
-                        styles.currencyButton,
-                        contractForm.currency === "EUR" && styles.currencyButtonActive
-                      ]}
-                      onPress={() => setContractForm({...contractForm, currency: "EUR"})}
-                    >
-                      <Text style={styles.currencyButtonText}>EUR</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.currencyButton,
-                        contractForm.currency === "USD" && styles.currencyButtonActive
-                      ]}
-                      onPress={() => setContractForm({...contractForm, currency: "USD"})}
-                    >
-                      <Text style={styles.currencyButtonText}>USD</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
+
 
               {/* Dates */}
               <View style={styles.formGroup}>
@@ -817,15 +773,6 @@ const handleDownloadContract = async (contract) => {
             <ScrollView>
               {selectedContract && (
                 <>
-                  <View style={styles.contractInfoBox}>
-                    <Text style={styles.contractInfoTitle}>{selectedContract.title}</Text>
-                    <Text style={styles.contractInfoDetail}>
-                      {getDocumentTypeLabel(selectedContract.document_type)}
-                    </Text>
-                    <Text style={styles.contractInfoDetail}>
-                      Wert: {formatCurrency(selectedContract.contract_value, selectedContract.currency)}
-                    </Text>
-                  </View>
 
                   {/* Employee Name */}
                   <View style={styles.formGroup}>
