@@ -65,16 +65,23 @@ const Employees = () => {
   const loadEmployees = async () => {
     try {
       setLoading(true);
-      
       const id = await AsyncStorage.getItem('user_id');
       const response = await fetch(`${API_URL}/users?admin_user_id=${id}`);
       const data = await response.json();
 
       if (response.ok) {
-        // API gibt direkt ein Array zurück
-        setEmployees(Array.isArray(data) ? data : []);
-      } else {
-        showError("Fehler", "Mitarbeiter konnten nicht geladen werden");
+        const users = Array.isArray(data.users) ? data.users : [];
+        
+        // Profilbilder nachladen
+        const usersWithPictures = await Promise.all(
+          users.map(async (user) => {
+            const picResponse = await fetch(`${API_URL}/getuserbyID/${user.id}`);
+            const picData = await picResponse.json();
+            return { ...user, profile_picture: picData.profile_picture || null };
+          })
+        );
+        
+        setEmployees(usersWithPictures);
       }
     } catch (error) {
       console.error("Error loading employees:", error);
@@ -343,9 +350,9 @@ const Employees = () => {
                         source={{ uri: `data:image/jpeg;base64,${employee.profile_picture}` }}
                         style={styles.employeeAvatarImage}
                       />
-                    ) : (
-                      <MaterialCommunityIcons name="account" size={30} color="white" />
-                    )}
+                      ) : (
+                        <MaterialCommunityIcons name="account" size={30} color="white" />
+                      )}
                   </View>
                   <View
                     style={[
@@ -366,15 +373,6 @@ const Employees = () => {
                       : 'Kein Name'}
                   </Text>
                   <Text style={styles.employeeEmail}>{employee.email}</Text>
-                </View>
-
-                <View style={styles.employeeCardFooter}>
-                  <View style={styles.employeeInfo}>
-                    <MaterialCommunityIcons name="calendar" size={14} color="#666" />
-                    <Text style={styles.employeeInfoText}>
-                      Erstellt: {new Date(employee.created_at).toLocaleDateString('de-DE')}
-                    </Text>
-                  </View>
                 </View>
               </TouchableOpacity>
             ))}
@@ -575,20 +573,6 @@ const Employees = () => {
                       <Text style={styles.detailInfoLabel}>Rolle</Text>
                       <Text style={styles.detailInfoValue}>
                         {getRoleLabel(selectedEmployee.role)}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.detailInfoRow}>
-                    <MaterialCommunityIcons name="calendar" size={20} color="#666" />
-                    <View style={styles.detailInfoContent}>
-                      <Text style={styles.detailInfoLabel}>Erstellt am</Text>
-                      <Text style={styles.detailInfoValue}>
-                        {new Date(selectedEmployee.created_at).toLocaleDateString('de-DE', {
-                          day: '2-digit',
-                          month: 'long',
-                          year: 'numeric'
-                        })}
                       </Text>
                     </View>
                   </View>

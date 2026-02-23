@@ -117,6 +117,7 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 15,
+    justifyContent: 'center',
   },
   employeeCard: {
     width: '47%',
@@ -171,20 +172,6 @@ export const styles = StyleSheet.create({
   employeeEmail: {
     fontSize: 13,
     color: '#666',
-  },
-  employeeCardFooter: {
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    paddingTop: 12,
-  },
-  employeeInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  employeeInfoText: {
-    fontSize: 11,
-    color: '#666',
-    marginLeft: 5,
   },
 
   // Empty State

@@ -335,7 +335,6 @@ const Profile = ({ navigation }) => {
     const uploadResponse = await fetch(`${API_URL}/upload-profile-picture/${userId}`, {
       method: 'POST',
       body: formData,
-      // KEIN headers!
     });
     
     const data = await uploadResponse.json();
