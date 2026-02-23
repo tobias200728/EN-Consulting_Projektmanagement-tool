@@ -32,7 +32,6 @@ const Documents = () => {
     title: "",
     party_a: "EN-Consulting",
     party_b: "",
-    currency: "EUR",
     start_date: "",
     end_date: "",
     terms: ""
@@ -42,7 +41,7 @@ const Documents = () => {
   const [signaturePartyA, setSignaturePartyA] = useState(null);
   const [signaturePartyB, setSignaturePartyB] = useState(null);
   const [employeeName, setEmployeeName] = useState("");
-  const [currentSigningFor, setCurrentSigningFor] = useState(null); // 'party_a' or 'party_b'
+  const [currentSigningFor, setCurrentSigningFor] = useState(null);
   
   const { alert, showSuccess, showError, showInfo, showConfirm, hideAlert } = useAlert();
   const { isAdmin, canCreateProject } = useAuth();
@@ -71,7 +70,6 @@ const Documents = () => {
       
       setUserId(id);
       
-      // Setze Default Employee Name
       if (firstName && lastName) {
         setEmployeeName(`${firstName} ${lastName}`);
       }
@@ -99,7 +97,6 @@ const Documents = () => {
       setLoading(true);
       const id = await AsyncStorage.getItem('user_id');
       
-      // Lade alle Verträge für alle Projekte
       const allContracts = [];
       
       for (const project of projects) {
@@ -149,7 +146,6 @@ const Documents = () => {
   };
 
   const handleCreateContract = async () => {
-    // Validierung
     if (!contractForm.project_id) {
       showInfo("Fehler", "Bitte wähle ein Projekt aus!");
       return;
@@ -185,12 +181,11 @@ const Documents = () => {
         showSuccess("Erfolg", "Vertrag wurde erstellt! Jetzt müssen beide Parteien unterschreiben.", () => {
           closeCreateModal();
           loadProjectContracts(contractForm.project_id);
-          // Öffne direkt Sign Modal für den neuen Vertrag
           setSelectedContract(data.contract);
           openSignModal(data.contract);
         });
       } else {
-        showError("Fehler", "Vertrag konnte nicht erstellt werden");
+        showError("Fehler", data.detail || "Vertrag konnte nicht erstellt werden");
       }
     } catch (error) {
       console.error("Error creating contract:", error);
@@ -201,7 +196,6 @@ const Documents = () => {
   };
 
   const handleSignContract = async () => {
-    // Validierung
     if (!signaturePartyA) {
       showInfo("Fehler", "Bitte unterschreibe für Partei A!");
       return;
@@ -221,7 +215,7 @@ const Documents = () => {
 
       const signatureData = {
         contract_id: selectedContract.id,
-        signature_party_a: signaturePartyA.split(',')[1], // Remove "data:image/png;base64,"
+        signature_party_a: signaturePartyA.split(',')[1],
         signature_employee_name: employeeName,
         signature_party_b: signaturePartyB.split(',')[1]
       };
@@ -255,53 +249,41 @@ const Documents = () => {
     }
   };
 
-
-const handleDownloadContract = async (contract) => {
-  if (!contract.has_pdf) {
-    showInfo("Info", "Dieser Vertrag wurde noch nicht unterschrieben und hat kein PDF.");
-    return;
-  }
-
-  try {
-    setLoading(true);
-    const id = await AsyncStorage.getItem('user_id');
-    
-    const url = `${API_URL}/contracts/${contract.id}/download?user_id=${id}`;
-    
-    // Web: Öffne in neuem Tab
-    if (typeof window !== 'undefined' && window.open) {
-      window.open(url, '_blank');
-      showSuccess("Erfolg", "PDF wird geöffnet...");
-    } else {
-      // Mobile Fallback: Lade PDF und öffne es
-      const response = await fetch(url);
-      const blob = await response.blob();
-      
-      // Erstelle temporäre URL
-      const fileUrl = URL.createObjectURL(blob);
-      
-      // Erstelle Download Link
-      const link = document.createElement('a');
-      link.href = fileUrl;
-      link.download = `${contract.title.replace(/[^a-z0-9]/gi, '_')}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Öffne PDF auch direkt
-      setTimeout(() => {
-        window.open(fileUrl, '_blank');
-      }, 100);
-      
-      showSuccess("Erfolg", "PDF wird heruntergeladen und geöffnet...");
+  const handleDownloadContract = async (contract) => {
+    if (!contract.has_pdf) {
+      showInfo("Info", "Dieser Vertrag wurde noch nicht unterschrieben und hat kein PDF.");
+      return;
     }
-  } catch (error) {
-    console.error("Error downloading contract:", error);
-    showError("Fehler", "Download fehlgeschlagen");
-  } finally {
-    setLoading(false);
-  }
-};
+
+    try {
+      setLoading(true);
+      const id = await AsyncStorage.getItem('user_id');
+      
+      const url = `${API_URL}/contracts/${contract.id}/download?user_id=${id}`;
+      
+      if (typeof window !== 'undefined' && window.open) {
+        window.open(url, '_blank');
+        showSuccess("Erfolg", "PDF wird geöffnet...");
+      } else {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const fileUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = fileUrl;
+        link.download = `${contract.title.replace(/[^a-z0-9]/gi, '_')}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => { window.open(fileUrl, '_blank'); }, 100);
+        showSuccess("Erfolg", "PDF wird heruntergeladen...");
+      }
+    } catch (error) {
+      console.error("Error downloading contract:", error);
+      showError("Fehler", "Download fehlgeschlagen");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDeleteContract = async (contract) => {
     showConfirm(
@@ -314,9 +296,7 @@ const handleDownloadContract = async (contract) => {
 
           const response = await fetch(
             `${API_URL}/contracts/${contract.id}?user_id=${id}`,
-            {
-              method: "DELETE",
-            }
+            { method: "DELETE" }
           );
 
           const data = await response.json();
@@ -335,13 +315,8 @@ const handleDownloadContract = async (contract) => {
           setLoading(false);
         }
       },
-      () => {
-        console.log("Löschen abgebrochen");
-      },
-      {
-        confirmText: "Löschen",
-        cancelText: "Abbrechen"
-      }
+      () => {},
+      { confirmText: "Löschen", cancelText: "Abbrechen" }
     );
   };
 
@@ -352,7 +327,6 @@ const handleDownloadContract = async (contract) => {
       title: "",
       party_a: "EN-Consulting",
       party_b: "",
-      currency: "EUR",
       start_date: "",
       end_date: "",
       terms: ""
@@ -382,9 +356,9 @@ const handleDownloadContract = async (contract) => {
 
   const getDocumentTypeLabel = (type) => {
     switch(type) {
-      case "construction": return "Tunnelbau";
-      case "maintenance": return "Wartung";
-      case "consulting": return "Beratung";
+      case "construction": return "Begehungsprotokoll";
+      case "maintenance": return "Mangel";
+      case "consulting": return "Besprechungsnotiz";
       default: return type;
     }
   };
@@ -409,13 +383,10 @@ const handleDownloadContract = async (contract) => {
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
-    const date = new Date(dateString);
+    const [y, m, d] = dateString.substring(0, 10).split('-').map(Number);
+    const date = new Date(y, m - 1, d);
     const months = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
     return `${date.getDate()}. ${months[date.getMonth()]} ${date.getFullYear()}`;
-  };
-
-  const formatCurrency = (value, currency) => {
-    return `${parseFloat(value).toLocaleString('de-DE', { minimumFractionDigits: 2 })} ${currency}`;
   };
 
   return (
@@ -426,12 +397,12 @@ const handleDownloadContract = async (contract) => {
           <View>
             <Text style={styles.title}>Dokumente & Verträge</Text>
             <Text style={styles.subtitle}>
-              Erstelle und verwalte Verträge mit digitalen Unterschriften
+              Erstelle und verwalte Dokumente mit digitalen Unterschriften
             </Text>
           </View>
           {canCreateProject && (
             <TouchableOpacity style={styles.uploadButton} onPress={openCreateModal}>
-              <Text style={styles.uploadButtonText}>+ Neuer Vertrag</Text>
+              <Text style={styles.uploadButtonText}>+ Neues Dokument</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -478,14 +449,14 @@ const handleDownloadContract = async (contract) => {
         {loading && contracts.length === 0 ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#2b5fff" />
-            <Text style={styles.loadingText}>Lade Verträge...</Text>
+            <Text style={styles.loadingText}>Lade Dokumente...</Text>
           </View>
         ) : contracts.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateIcon}>📄</Text>
-            <Text style={styles.emptyStateTitle}>Noch keine Verträge</Text>
+            <Text style={styles.emptyStateTitle}>Noch keine Dokumente</Text>
             <Text style={styles.emptyStateText}>
-              Erstelle deinen ersten Vertrag mit digitalen Unterschriften
+              Erstelle dein erstes Dokument mit digitalen Unterschriften
             </Text>
           </View>
         ) : (
@@ -524,7 +495,7 @@ const handleDownloadContract = async (contract) => {
                   <View style={styles.contractDetailRow}>
                     <Text style={styles.contractDetailLabel}>Laufzeit:</Text>
                     <Text style={styles.contractDetailValue}>
-                      {formatDate(contract.start_date)} - {formatDate(contract.end_date)}
+                      {formatDate(contract.start_date)} – {formatDate(contract.end_date)}
                     </Text>
                   </View>
                   {contract.signature_employee_name && (
@@ -582,7 +553,7 @@ const handleDownloadContract = async (contract) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Neuen Vertrag erstellen</Text>
+              <Text style={styles.modalTitle}>Neues Dokument erstellen</Text>
               <TouchableOpacity onPress={closeCreateModal} style={styles.closeButton}>
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
@@ -617,53 +588,30 @@ const handleDownloadContract = async (contract) => {
 
               {/* Document Type */}
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Vertragsart *</Text>
+                <Text style={styles.label}>Dokumentenart *</Text>
                 <View style={styles.documentTypeButtons}>
-                  <TouchableOpacity
-                    style={[
-                      styles.documentTypeButton,
-                      contractForm.document_type === "construction" && styles.documentTypeButtonActive
-                    ]}
-                    onPress={() => setContractForm({...contractForm, document_type: "construction"})}
-                  >
-                    <Text style={styles.documentTypeIcon}></Text>
-                    <Text style={[
-                      styles.documentTypeButtonText,
-                      contractForm.document_type === "construction" && styles.documentTypeButtonTextActive
-                    ]}>
-                      Begehungsprotokoll
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.documentTypeButton,
-                      contractForm.document_type === "maintenance" && styles.documentTypeButtonActive
-                    ]}
-                    onPress={() => setContractForm({...contractForm, document_type: "maintenance"})}
-                  >
-                    <Text style={styles.documentTypeIcon}></Text>
-                    <Text style={[
-                      styles.documentTypeButtonText,
-                      contractForm.document_type === "maintenance" && styles.documentTypeButtonTextActive
-                    ]}>
-                      Mangel
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.documentTypeButton,
-                      contractForm.document_type === "consulting" && styles.documentTypeButtonActive
-                    ]}
-                    onPress={() => setContractForm({...contractForm, document_type: "consulting"})}
-                  >
-                    <Text style={styles.documentTypeIcon}></Text>
-                    <Text style={[
-                      styles.documentTypeButtonText,
-                      contractForm.document_type === "consulting" && styles.documentTypeButtonTextActive
-                    ]}>
-                      Besprechungsnotiz
-                    </Text>
-                  </TouchableOpacity>
+                  {[
+                    { value: "construction", icon: "🏗️", label: "Begehungsprotokoll" },
+                    { value: "maintenance", icon: "🔧", label: "Mangel" },
+                    { value: "consulting", icon: "📝", label: "Besprechungsnotiz" },
+                  ].map((type) => (
+                    <TouchableOpacity
+                      key={type.value}
+                      style={[
+                        styles.documentTypeButton,
+                        contractForm.document_type === type.value && styles.documentTypeButtonActive
+                      ]}
+                      onPress={() => setContractForm({...contractForm, document_type: type.value})}
+                    >
+                      <Text style={styles.documentTypeIcon}>{type.icon}</Text>
+                      <Text style={[
+                        styles.documentTypeButtonText,
+                        contractForm.document_type === type.value && styles.documentTypeButtonTextActive
+                      ]}>
+                        {type.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               </View>
 
@@ -672,7 +620,7 @@ const handleDownloadContract = async (contract) => {
                 <Text style={styles.label}>Titel *</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="z.B. Tunnelbauvertrag Metro Linie 5"
+                  placeholder="z.B. Begehungsprotokoll Tunnel Abschnitt 3"
                   value={contractForm.title}
                   onChangeText={(text) => setContractForm({...contractForm, title: text})}
                 />
@@ -698,8 +646,6 @@ const handleDownloadContract = async (contract) => {
                 />
               </View>
 
-
-
               {/* Dates */}
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Startdatum *</Text>
@@ -723,10 +669,10 @@ const handleDownloadContract = async (contract) => {
 
               {/* Terms */}
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Zusätzliche Bedingungen (optional)</Text>
+                <Text style={styles.label}>Notizen / Zusätzliche Informationen (optional)</Text>
                 <TextInput
                   style={[styles.input, styles.textArea]}
-                  placeholder="Weitere Vertragsbedingungen..."
+                  placeholder="Weitere Informationen..."
                   multiline
                   numberOfLines={4}
                   value={contractForm.terms}
@@ -745,7 +691,7 @@ const handleDownloadContract = async (contract) => {
                   disabled={loading}
                 >
                   <Text style={styles.saveButtonText}>
-                    {loading ? "Wird erstellt..." : "Vertrag erstellen"}
+                    {loading ? "Wird erstellt..." : "Dokument erstellen"}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -764,7 +710,7 @@ const handleDownloadContract = async (contract) => {
         <View style={styles.modalOverlay}>
           <View style={styles.signModalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Vertrag unterschreiben</Text>
+              <Text style={styles.modalTitle}>Dokument unterschreiben</Text>
               <TouchableOpacity onPress={closeSignModal} style={styles.closeButton}>
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
@@ -773,7 +719,6 @@ const handleDownloadContract = async (contract) => {
             <ScrollView>
               {selectedContract && (
                 <>
-
                   {/* Employee Name */}
                   <View style={styles.formGroup}>
                     <Text style={styles.label}>Name des Mitarbeiters (Partei A) *</Text>
@@ -854,7 +799,7 @@ const handleDownloadContract = async (contract) => {
                       disabled={loading}
                     >
                       <Text style={styles.saveButtonText}>
-                        {loading ? "Wird unterschrieben..." : "Vertrag unterschreiben"}
+                        {loading ? "Wird unterschrieben..." : "Dokument unterschreiben"}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -884,14 +829,12 @@ const handleDownloadContract = async (contract) => {
         />
       )}
 
-      {/* Loading Overlay */}
       {loading && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#2b5fff" />
         </View>
       )}
 
-      {/* CustomAlert */}
       <CustomAlert {...alert} onDismiss={hideAlert} />
     </Layout>
   );

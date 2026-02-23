@@ -70,22 +70,22 @@ def generate_contract_pdf(contract):
     story = []
     
     # Header
-    story.append(Paragraph("VERTRAGSVEREINBARUNG", title_style))
+    story.append(Paragraph("DOKUMENT", title_style))
     story.append(Spacer(1, 0.5*cm))
     
     # Contract Title
     story.append(Paragraph(contract.title, heading_style))
     story.append(Spacer(1, 0.3*cm))
     
-    # Contract Type Badge
+    # Document Type Badge
     type_labels = {
-        "construction": "Tunnelbauvertrag",
-        "maintenance": "Wartungsvertrag",
-        "consulting": "Beratungsvertrag"
+        "construction": "Begehungsprotokoll",
+        "maintenance": "Mangel",
+        "consulting": "Besprechungsnotiz"
     }
-    contract_type = type_labels.get(contract.document_type, contract.document_type)
+    document_type = type_labels.get(contract.document_type, contract.document_type)
     
-    story.append(Paragraph(f"<b>Vertragsart:</b> {contract_type}", normal_style))
+    story.append(Paragraph(f"<b>Dokumentenart:</b> {document_type}", normal_style))
     story.append(Spacer(1, 0.5*cm))
     
     # Parties
@@ -111,11 +111,10 @@ def generate_contract_pdf(contract):
     story.append(parties_table)
     story.append(Spacer(1, 0.5*cm))
     
-    # Contract Details
-    story.append(Paragraph("VERTRAGSDETAILS", heading_style))
+    # Contract Details (ohne Vertragswert)
+    story.append(Paragraph("DETAILS", heading_style))
     
     details_data = [
-        ["Vertragswert:", f"{contract.contract_value:,.2f} {contract.currency}"],
         ["Startdatum:", contract.start_date.strftime("%d.%m.%Y")],
         ["Enddatum:", contract.end_date.strftime("%d.%m.%Y")],
     ]
@@ -137,7 +136,7 @@ def generate_contract_pdf(contract):
     
     # Terms & Conditions
     if contract.terms:
-        story.append(Paragraph("ZUSÄTZLICHE BEDINGUNGEN", heading_style))
+        story.append(Paragraph("NOTIZEN / ZUSÄTZLICHE INFORMATIONEN", heading_style))
         story.append(Paragraph(contract.terms, normal_style))
         story.append(Spacer(1, 0.5*cm))
     
@@ -201,7 +200,7 @@ def generate_contract_pdf(contract):
     
     # Footer
     story.append(Spacer(1, 1*cm))
-    footer_text = f"Erstellt am: {datetime.utcnow().strftime('%d.%m.%Y %H:%M')} | Vertrags-ID: {contract.id}"
+    footer_text = f"Erstellt am: {datetime.utcnow().strftime('%d.%m.%Y %H:%M')} | Dokument-ID: {contract.id}"
     story.append(Paragraph(footer_text, ParagraphStyle(
         'Footer',
         parent=styles['Normal'],
@@ -225,25 +224,20 @@ def get_signature_image(signature_bytes):
     Konvertiert Signature Bytes zu ReportLab Image
     """
     try:
-        # Lade Signature als PIL Image
         sig_buffer = BytesIO(signature_bytes)
         pil_img = PILImage.open(sig_buffer)
         
-        # Konvertiere zu RGB falls nötig
         if pil_img.mode != 'RGB':
             pil_img = pil_img.convert('RGB')
         
-        # Speichere zu BytesIO
         img_buffer = BytesIO()
         pil_img.save(img_buffer, format='PNG')
         img_buffer.seek(0)
         
-        # Erstelle ReportLab Image
         img = Image(img_buffer, width=6*cm, height=3*cm)
         
         return img
         
     except Exception as e:
         print(f"Error loading signature image: {e}")
-        # Fallback zu Platzhalter
         return Paragraph("_______________________", getSampleStyleSheet()['Normal'])

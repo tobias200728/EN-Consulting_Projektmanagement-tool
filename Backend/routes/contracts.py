@@ -31,8 +31,6 @@ class ContractCreate(BaseModel):
     title: str
     party_a: str
     party_b: str
-    contract_value: float
-    currency: str = "EUR"
     start_date: str
     end_date: str
     terms: Optional[str] = None
@@ -75,15 +73,15 @@ async def create_contract(
         start_date_obj = datetime.strptime(data.start_date, "%Y-%m-%d").date()
         end_date_obj = datetime.strptime(data.end_date, "%Y-%m-%d").date()
         
-        # Erstelle Contract (OHNE Unterschriften)
+        # Erstelle Contract (OHNE Unterschriften, ohne currency/value)
         db_contract = models.Contract(
             project_id=data.project_id,
             document_type=data.document_type,
             title=data.title,
             party_a=data.party_a,
             party_b=data.party_b,
-            contract_value=data.contract_value,
-            currency=data.currency,
+            contract_value=0.0,   # DB-Feld bleibt, wird mit 0 befüllt
+            currency="EUR",       # DB-Feld bleibt, Default-Wert
             start_date=start_date_obj,
             end_date=end_date_obj,
             terms=data.terms,
@@ -189,7 +187,6 @@ async def download_contract(
             detail="You don't have access to this contract"
         )
     
-    # Return PDF as download
     filename = f"contract_{contract.id}_{contract.title.replace(' ', '_')}.pdf"
     
     return Response(
@@ -280,8 +277,6 @@ def format_contract_response(contract):
         "title": contract.title,
         "party_a": contract.party_a,
         "party_b": contract.party_b,
-        "contract_value": contract.contract_value,
-        "currency": contract.currency,
         "start_date": str(contract.start_date) if contract.start_date else None,
         "end_date": str(contract.end_date) if contract.end_date else None,
         "terms": contract.terms,
