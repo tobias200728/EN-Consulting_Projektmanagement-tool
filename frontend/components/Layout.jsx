@@ -40,22 +40,29 @@ export default function Layout({ children }) {
       icon: "hammer-wrench", 
       iconFamily: "MaterialCommunityIcons", 
       screen: "Projects", 
-      label: "Projects",
+      label: "Projekte",
       roles: ['admin', 'employee', 'guest']
     },
     { 
       icon: "calendar-month", 
       iconFamily: "MaterialCommunityIcons", 
       screen: "Calendar", 
-      label: "Calendar",
+      label: "Kalender",
       roles: ['admin', 'employee']
     },
     { 
       icon: "document-text-outline", 
       iconFamily: "Ionicons", 
       screen: "Documents", 
-      label: "Documents",
+      label: "Dokumente",
       roles: ['admin', 'employee']
+    },
+    { 
+      icon: "account-group",              
+      iconFamily: "MaterialCommunityIcons", 
+      screen: "Employees",                   
+      label: "Mitarbeiter",                    
+      roles: ['admin']                       
     },
   ];
 

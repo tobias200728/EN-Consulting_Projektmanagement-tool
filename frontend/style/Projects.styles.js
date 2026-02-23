@@ -520,7 +520,7 @@ export const styles = StyleSheet.create({
 
   // Detail Modal
   detailModalContent: {
-    width: isMobile ? '100%' : '60%',
+    width: isMobile ? '100%' : '75%',
     height: isMobile ? '100%' : '95%',
     backgroundColor: 'white',
     borderRadius: isMobile ? 0 : 15,
@@ -820,7 +820,6 @@ export const styles = StyleSheet.create({
     flexDirection: isMobile ? 'column' : 'row',
     gap: isMobile ? 15 : 25,
     justifyContent: 'center',
-    width: '100%',
   },
   
   taskColumn: {

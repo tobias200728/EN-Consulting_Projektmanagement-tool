@@ -237,9 +237,6 @@ const Dashboard = () => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Neueste Projekte</Text>
-              <TouchableOpacity>
-                <Text style={styles.viewAll}>Alle anzeigen →</Text>
-              </TouchableOpacity>
             </View>
 
             {recentProjects.length === 0 ? (

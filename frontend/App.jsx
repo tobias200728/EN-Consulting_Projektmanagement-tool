@@ -12,6 +12,7 @@ import Projects from './components/Projects_folder/Projects';
 import Calendar from './components/Calendar';
 import Documents from './components/Documents';
 import Profile from './components/Profile';
+import Employees from './components/Employees';
 
 const Stack = createNativeStackNavigator();
 
@@ -23,11 +24,11 @@ export default function App() {
           <Stack.Screen name="Login" component={Login} />
           <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
           <Stack.Screen name="TwoFA" component={TwoFA} />
-
           <Stack.Screen name="Dashboard" component={Dashboard} />
           <Stack.Screen name="Projects" component={Projects} />
           <Stack.Screen name="Calendar" component={Calendar} />
           <Stack.Screen name="Documents" component={Documents} />
+          <Stack.Screen name='Employees' component={Employees} />
           <Stack.Screen name="Profile" component={Profile} />
         </Stack.Navigator>
         <StatusBar style="auto" />
