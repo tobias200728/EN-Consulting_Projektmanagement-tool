@@ -39,7 +39,6 @@ export default function Layout({ children }) {
     loadUserData();
   }, [userId]);
 
-  // ✅ LAZY LOADING: Erst Name laden, dann Bild separat
   const loadUserData = async () => {
     try {
       const id = await AsyncStorage.getItem('user_id');
@@ -50,7 +49,7 @@ export default function Layout({ children }) {
         setUserFirstName(cachedFirstName);
       }
 
-      // Basis-Info laden (ohne Bild)
+      // Basis-Info laden
       const response = await fetch(`${API_URL}/getuserbyID/${id}`);
       const data = await response.json();
 
@@ -59,17 +58,9 @@ export default function Layout({ children }) {
         setUserFirstName(firstName);
         await AsyncStorage.setItem('user_first_name', firstName);
 
-        // ✅ Profilbild lazy nachladen falls vorhanden
-        if (data.has_profile_picture) {
-          try {
-            const picResponse = await fetch(`${API_URL}/profile-picture/${id}/base64`);
-            const picData = await picResponse.json();
-            if (picResponse.ok && picData.profile_picture) {
-              setProfilePicture(picData.profile_picture);
-            }
-          } catch (err) {
-            console.log('Could not load profile picture in Layout');
-          }
+        // ✅ FIX: Profilbild direkt aus getuserbyID laden (gibt profile_picture als Base64 zurück)
+        if (data.profile_picture) {
+          setProfilePicture(data.profile_picture);
         }
       }
     } catch (error) {

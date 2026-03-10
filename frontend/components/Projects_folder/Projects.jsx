@@ -121,7 +121,6 @@ const Projects = () => {
     return Math.round((completed / tasks.length) * 100);
   };
 
-  // ✅ FIX: Todos für jedes Projekt laden und Fortschritt korrekt berechnen
   const loadProjects = async () => {
     try {
       const id = await AsyncStorage.getItem('user_id');
@@ -139,7 +138,6 @@ const Projects = () => {
             let memberCount = 0;
             let todos = [];
 
-            // Lade Member-Anzahl
             try {
               const membersResponse = await fetch(`${API_URL}/projects/${p.id}/members?user_id=${id}`);
               const membersData = await membersResponse.json();
@@ -150,7 +148,6 @@ const Projects = () => {
               console.log(`Could not load members for project ${p.id}`);
             }
 
-            // ✅ FIX: Lade Todos und berechne Fortschritt
             try {
               const todosResponse = await fetch(`${API_URL}/projects/${p.id}/todos?user_id=${id}`);
               const todosData = await todosResponse.json();
@@ -168,20 +165,19 @@ const Projects = () => {
               console.log(`Could not load todos for project ${p.id}`);
             }
 
-            // ✅ Fortschritt aus Todos berechnen (nicht vom Backend übernehmen)
             const calculatedProgress = calculateProgressFromTodos(todos);
 
             return {
               id: p.id,
               title: p.name,
               description: p.description,
-              progress: calculatedProgress, // ✅ Berechneter Fortschritt
+              progress: calculatedProgress,
               startDate: p.start_date,
               endDate: p.end_date,
               interimDates: p.interim_dates || [],
               teamMembers: memberCount,
               status: p.status,
-              tasks: todos // ✅ Tasks mitgeben damit Detail-Modal sie sofort hat
+              tasks: todos
             };
           })
         );
@@ -366,7 +362,6 @@ const Projects = () => {
       );
       const data = await response.json();
       if (response.ok && data.status === "ok") {
-        // Update selectedProject and projectsList locally
         const updated = { ...selectedProject, interimDates: newInterimDates };
         setSelectedProject(updated);
         setProjectsList(prev =>
@@ -432,10 +427,9 @@ const Projects = () => {
   };
   const closeModal = () => setModalVisible(false);
 
-  // ✅ FIX: openProjectDetail nutzt bereits geladene Tasks aus projectsList
+  // ✅ FIX: kein setLoading hier — verhindert den Loading-Overlay der das Modal überdeckt
   const openProjectDetail = async (project) => {
     try {
-      setLoading(true);
       const id = await AsyncStorage.getItem('user_id');
       if (!id) { showError("Fehler", "Keine User-ID gefunden. Bitte erneut einloggen."); return; }
 
@@ -453,11 +447,8 @@ const Projects = () => {
           }
         } catch (e) {}
 
-        // ✅ Nutze bereits geladene Tasks aus der Projektliste (haben korrekte Fortschrittsberechnung)
-        // Lade nur neu wenn nötig
         let todos = project.tasks || [];
 
-        // Wenn tasks leer, nochmal laden
         if (todos.length === 0) {
           try {
             const todosResponse = await fetch(`${API_URL}/projects/${project.id}/todos?user_id=${id}`);
@@ -489,14 +480,12 @@ const Projects = () => {
         });
 
         await loadProjectMembers(project.id);
-        setDetailModalVisible(true);
+        setDetailModalVisible(true); // ✅ Modal öffnen OHNE loading-Overlay
       } else {
         showError("Fehler", "Projekt konnte nicht geladen werden");
       }
     } catch (error) {
       showError("Fehler", "Verbindung zum Server fehlgeschlagen");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -765,7 +754,8 @@ const Projects = () => {
         )}
       </ScrollView>
 
-      {loading && (
+      {/* ✅ FIX: Loading-Overlay nur bei Aktionen die NICHT das Detail-Modal betreffen */}
+      {loading && !detailModalVisible && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color="#2b5fff" />
         </View>

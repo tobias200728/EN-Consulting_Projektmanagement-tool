@@ -42,7 +42,6 @@ const Profile = ({ navigation }) => {
     loadUserData();
   }, []);
 
-  // ✅ LAZY LOADING: Erst Basisdaten, dann Profilbild separat
   const loadUserData = async () => {
     try {
       const user_id = await AsyncStorage.getItem('user_id');
@@ -53,6 +52,7 @@ const Profile = ({ navigation }) => {
       setUserEmail(user_email);
 
       if (user_id) {
+        // ✅ FIX: getuserbyID gibt profile_picture direkt als Base64 zurück
         const response = await fetch(`${API_URL}/getuserbyID/${user_id}`);
         const data = await response.json();
 
@@ -62,21 +62,9 @@ const Profile = ({ navigation }) => {
             lastName: data.last_name || '',
             email: data.email || user_email || '',
             role: data.role || user_role || '',
-            profilePicture: null
+            // ✅ FIX: profile_picture kommt direkt aus dem getuserbyID Endpoint
+            profilePicture: data.profile_picture || null
           });
-
-          // ✅ Profilbild lazy nachladen
-          if (data.has_profile_picture) {
-            try {
-              const picResponse = await fetch(`${API_URL}/profile-picture/${user_id}`);
-              const picData = await picResponse.json();
-              if (picResponse.ok && picData.profile_picture) {
-                setProfileData(prev => ({ ...prev, profilePicture: picData.profile_picture }));
-              }
-            } catch (err) {
-              console.log('Could not load profile picture');
-            }
-          }
 
           // 2FA Status laden
           if (user_email) {
@@ -202,14 +190,12 @@ const Profile = ({ navigation }) => {
 
       if (uploadResponse.ok && data.status === 'ok') {
         showSuccess('Erfolg', 'Profilbild wurde erfolgreich hochgeladen');
-        // ✅ Bild lazy neu laden
-        try {
-          const picResponse = await fetch(`${API_URL}/profile-picture/${userId}`);
-          const picData = await picResponse.json();
-          if (picResponse.ok && picData.profile_picture) {
-            setProfileData(prev => ({ ...prev, profilePicture: picData.profile_picture }));
-          }
-        } catch { if (data.profile_picture) setProfileData(prev => ({ ...prev, profilePicture: data.profile_picture })); }
+        // ✅ FIX: Bild neu laden über getuserbyID
+        const refreshResponse = await fetch(`${API_URL}/getuserbyID/${userId}`);
+        const refreshData = await refreshResponse.json();
+        if (refreshResponse.ok && refreshData.profile_picture) {
+          setProfileData(prev => ({ ...prev, profilePicture: refreshData.profile_picture }));
+        }
       } else {
         const msg = Array.isArray(data.detail) ? data.detail.map(e => e.msg).join(', ') : (data.detail || 'Upload fehlgeschlagen');
         showError('Fehler', msg);
@@ -490,6 +476,5 @@ const Profile = ({ navigation }) => {
     </Layout>
   );
 };
-
 
 export default Profile;

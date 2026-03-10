@@ -62,7 +62,7 @@ const Employees = () => {
     }
   };
 
-  // ✅ LAZY LOADING: Nur has_profile_picture aus /users, dann Bild separat nachladen
+  // ✅ FIX: Profilbilder über getuserbyID laden (gibt profile_picture direkt als Base64 zurück)
   const loadEmployees = async () => {
     try {
       setLoading(true);
@@ -77,20 +77,18 @@ const Employees = () => {
         setEmployees(users.map(u => ({ ...u, profile_picture: null })));
         setLoading(false);
 
-        // Dann Profilbilder lazy nachladen
+        // ✅ FIX: Profilbilder über getuserbyID nachladen (hat_profile_picture existiert nicht im /users endpoint)
         users.forEach(async (user) => {
-          if (user.has_profile_picture) {
-            try {
-              const picResponse = await fetch(`${API_URL}/profile-picture/${user.id}`);
-              const picData = await picResponse.json();
-              if (picResponse.ok && picData.profile_picture) {
-                setEmployees(prev =>
-                  prev.map(e => e.id === user.id ? { ...e, profile_picture: picData.profile_picture } : e)
-                );
-              }
-            } catch (err) {
-              console.log(`Could not load profile picture for user ${user.id}`);
+          try {
+            const userResponse = await fetch(`${API_URL}/getuserbyID/${user.id}`);
+            const userData = await userResponse.json();
+            if (userResponse.ok && userData.profile_picture) {
+              setEmployees(prev =>
+                prev.map(e => e.id === user.id ? { ...e, profile_picture: userData.profile_picture } : e)
+              );
             }
+          } catch (err) {
+            console.log(`Could not load profile picture for user ${user.id}`);
           }
         });
       }
@@ -142,9 +140,7 @@ const Employees = () => {
 
       const response = await fetch(`${API_URL}/adduser/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: employeeForm.email.trim(),
           password: employeeForm.password,
@@ -498,19 +494,6 @@ const Employees = () => {
                       <Text style={styles.detailInfoValue}>{getRoleLabel(selectedEmployee.role)}</Text>
                     </View>
                   </View>
-                  {selectedEmployee.last_login && (
-                    <View style={styles.detailInfoRow}>
-                      <MaterialCommunityIcons name="login" size={20} color="#666" />
-                      <View style={styles.detailInfoContent}>
-                        <Text style={styles.detailInfoLabel}>Letzter Login</Text>
-                        <Text style={styles.detailInfoValue}>
-                          {new Date(selectedEmployee.last_login).toLocaleDateString('de-DE', {
-                            day: '2-digit', month: 'long', year: 'numeric'
-                          })}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
                 </View>
 
                 <View style={styles.warningBox}>
