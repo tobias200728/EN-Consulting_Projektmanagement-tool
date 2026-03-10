@@ -27,6 +27,7 @@ class ProjectCreate(BaseModel):
     start_date: date
     end_date: date
     interim_dates: List[date]
+    sharepoint_url: Optional[str] = None
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
@@ -36,6 +37,7 @@ class ProjectUpdate(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     interim_dates: Optional[List[date]] = None
+    sharepoint_url: Optional[str] = None
 
 @router.post("/projects")
 async def create_project(data: ProjectCreate, user_id: int, db: Session = Depends(get_db)):
@@ -52,6 +54,7 @@ async def create_project(data: ProjectCreate, user_id: int, db: Session = Depend
             start_date=data.start_date,
             end_date=data.end_date,
             interim_dates=data.interim_dates,
+            sharepoint_url=data.sharepoint_url,
             created_by=user_id
         )
         db.add(db_project)
@@ -117,6 +120,8 @@ async def update_project(project_id: int, data: ProjectUpdate, user_id: int, db:
             project.end_date = data.end_date
         if data.interim_dates is not None:
             project.interim_dates = data.interim_dates
+        if data.sharepoint_url is not None:
+            project.sharepoint_url = data.sharepoint_url
         
         db.commit()
         db.refresh(project)
@@ -154,4 +159,3 @@ async def delete_project(project_id: int, user_id: int, db: Session = Depends(ge
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error deleting project: {str(e)}")
-    

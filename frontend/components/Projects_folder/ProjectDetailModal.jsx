@@ -1,1270 +1,283 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Modal,
-  Image,
-  ActivityIndicator,
-  TextInput,
-} from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { SafeAreaView } from "react-native-safe-area-context";
+  View, Text, ScrollView, TouchableOpacity, Modal,
+  Image, ActivityIndicator, Linking
+} from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { styles } from "../../style/Projects.styles";
-import { ip_adress } from "@env";
+import { ip_adress } from '@env';
 
 const API_URL = `http://${ip_adress}:8000`;
 
-// ─── Inline Image Gallery Modal ───────────────────────────────────────────────
-const ImageGalleryModal = ({ visible, onClose, project, isAdmin }) => {
-  const [images, setImages] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
+const ProjectDetailModal = ({ visible, project, onClose, onEdit, isAdmin }) => {
+  const [images, setImages] = useState([]);        // Nur Metadaten
+  const [imageData, setImageData] = useState({});  // { img_id: base64 }
+  const [loadingImages, setLoadingImages] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
 
   useEffect(() => {
-    if (visible && project) loadImages();
-  }, [visible, project]);
+    if (visible && project?.id) {
+      loadImageMetadata();
+    } else {
+      setImages([]);
+      setImageData({});
+    }
+  }, [visible, project?.id]);
 
-  const loadImages = async () => {
+  // ✅ LAZY LOADING: Erst nur Metadaten laden (schnell)
+  const loadImageMetadata = async () => {
     try {
-      setLoading(true);
-      const id = await AsyncStorage.getItem("user_id");
-      const response = await fetch(
-        `${API_URL}/projects/${project.id}/images?user_id=${id}`
-      );
+      setLoadingImages(true);
+      const response = await fetch(`${API_URL}/projects/${project.id}/images`);
       const data = await response.json();
-      if (response.ok && data.status === "ok") {
-        setImages(data.images || []);
+
+      if (response.ok) {
+        const imgList = Array.isArray(data.images) ? data.images : [];
+        setImages(imgList);
+
+        // Dann Bilder lazy nachladen
+        imgList.forEach(async (img) => {
+          try {
+            const imgResponse = await fetch(`${API_URL}/projects/${project.id}/images/${img.id}`);
+            const imgData = await imgResponse.json();
+            if (imgResponse.ok && imgData.image_data) {
+              setImageData(prev => ({ ...prev, [img.id]: imgData.image_data }));
+            }
+          } catch (err) {
+            console.log(`Could not load image ${img.id}`);
+          }
+        });
       }
     } catch (error) {
-      console.error("Error loading images:", error);
+      console.error('Error loading project images:', error);
     } finally {
-      setLoading(false);
+      setLoadingImages(false);
     }
   };
 
-  const handleUpload = async () => {
-    try {
-      const ImagePicker = await import("expo-image-picker");
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") return;
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 0.8,
+  const handleOpenSharePoint = () => {
+    if (project?.sharepoint_url) {
+      Linking.openURL(project.sharepoint_url).catch(() => {
+        console.error('Could not open SharePoint URL');
       });
-
-      if (result.canceled) return;
-
-      setUploading(true);
-      const id = await AsyncStorage.getItem("user_id");
-      const uri = result.assets[0].uri;
-
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const filename = `project_${project.id}_${Date.now()}.jpg`;
-      const file = new File([blob], filename, {
-        type: blob.type || "image/jpeg",
-      });
-
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const uploadResponse = await fetch(
-        `${API_URL}/projects/${project.id}/images?user_id=${id}`,
-        { method: "POST", body: formData }
-      );
-      const uploadData = await uploadResponse.json();
-
-      if (uploadResponse.ok && uploadData.status === "ok") {
-        loadImages();
-      }
-    } catch (error) {
-      console.error("Error uploading image:", error);
-    } finally {
-      setUploading(false);
     }
   };
 
-  const handleDelete = async (imageId) => {
-    try {
-      const id = await AsyncStorage.getItem("user_id");
-      const response = await fetch(
-        `${API_URL}/projects/${project.id}/images/${imageId}?user_id=${id}`,
-        { method: "DELETE" }
-      );
-      const data = await response.json();
-      if (response.ok && data.status === "ok") {
-        setImages((prev) => prev.filter((img) => img.id !== imageId));
-        if (selectedImage?.id === imageId) setSelectedImage(null);
-      }
-    } catch (error) {
-      console.error("Error deleting image:", error);
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'active':    return '#4caf50';
+      case 'completed': return '#2b5fff';
+      case 'on_hold':   return '#ff9800';
+      case 'cancelled': return '#dc3545';
+      default:          return '#999';
     }
   };
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'active':    return 'Aktiv';
+      case 'completed': return 'Abgeschlossen';
+      case 'on_hold':   return 'Pausiert';
+      case 'cancelled': return 'Abgebrochen';
+      default:          return status;
+    }
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '–';
+    return new Date(dateStr).toLocaleDateString('de-DE', {
+      day: '2-digit', month: 'long', year: 'numeric'
+    });
+  };
+
+  if (!project) return null;
 
   return (
     <Modal
       animationType="fade"
-      transparent
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      <View style={galleryStyles.overlay}>
-        <View style={galleryStyles.container}>
-          {/* Header */}
-          <View style={galleryStyles.header}>
-            <View>
-              <Text style={galleryStyles.title}>Projektbilder</Text>
-              <Text style={galleryStyles.subtitle}>
-                {project?.title || "Projekt"}
-              </Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={galleryStyles.closeBtn}>
-              <Text style={galleryStyles.closeBtnText}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Upload Button */}
-          <TouchableOpacity
-            style={[
-              galleryStyles.uploadBtn,
-              uploading && galleryStyles.uploadBtnDisabled,
-            ]}
-            onPress={handleUpload}
-            disabled={uploading}
-          >
-            {uploading ? (
-              <View style={galleryStyles.uploadBtnInner}>
-                <ActivityIndicator size="small" color="white" />
-                <Text style={galleryStyles.uploadBtnText}>
-                  Wird hochgeladen...
-                </Text>
-              </View>
-            ) : (
-              <Text style={galleryStyles.uploadBtnText}>
-                + Bild hinzufügen
-              </Text>
-            )}
-          </TouchableOpacity>
-
-          {/* Content */}
-          {loading ? (
-            <View style={galleryStyles.center}>
-              <ActivityIndicator size="large" color="#2b5fff" />
-              <Text style={galleryStyles.loadingText}>
-                Bilder werden geladen...
-              </Text>
-            </View>
-          ) : images.length === 0 ? (
-            <View style={galleryStyles.center}>
-              <Text style={galleryStyles.emptyIcon}></Text>
-              <Text style={galleryStyles.emptyTitle}>Keine Bilder vorhanden</Text>
-              <Text style={galleryStyles.emptyText}>
-                Füge das erste Bild zu diesem Projekt hinzu
-              </Text>
-            </View>
-          ) : (
-            <ScrollView contentContainerStyle={galleryStyles.grid}>
-              {images.map((img) => (
-                <TouchableOpacity
-                  key={img.id}
-                  style={galleryStyles.imageWrapper}
-                  onPress={() => setSelectedImage(img)}
-                >
-                  <Image
-                    source={{
-                      uri: `data:image/jpeg;base64,${img.image_data}`,
-                    }}
-                    style={galleryStyles.thumbnail}
-                    resizeMode="cover"
-                  />
-                  {isAdmin && (
-                    <TouchableOpacity
-                      style={galleryStyles.deleteBtn}
-                      onPress={() => handleDelete(img.id)}
-                    >
-                      <Text style={galleryStyles.deleteBtnText}>✕</Text>
-                    </TouchableOpacity>
-                  )}
-                  <Text style={galleryStyles.imageFilename} numberOfLines={1}>
-                    {img.filename || "Bild"}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
-        </View>
-      </View>
-
-      {/* Fullscreen Viewer */}
-      {selectedImage && (
-        <Modal transparent animationType="fade">
-          <View style={galleryStyles.fullscreenOverlay}>
-            <TouchableOpacity
-              style={galleryStyles.fullscreenClose}
-              onPress={() => setSelectedImage(null)}
-            >
-              <Text style={galleryStyles.fullscreenCloseText}>✕ Schließen</Text>
-            </TouchableOpacity>
-            <Image
-              source={{
-                uri: `data:image/jpeg;base64,${selectedImage.image_data}`,
-              }}
-              style={galleryStyles.fullscreenImage}
-              resizeMode="contain"
-            />
-            {isAdmin && (
-              <TouchableOpacity
-                style={galleryStyles.fullscreenDelete}
-                onPress={() => handleDelete(selectedImage.id)}
-              >
-                <Text style={galleryStyles.fullscreenDeleteText}>
-                  Bild löschen
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </Modal>
-      )}
-    </Modal>
-  );
-};
-
-// ─── Gallery Styles ────────────────────────────────────────────────────────────
-const { StyleSheet, Dimensions } = require("react-native");
-const { width } = Dimensions.get("window");
-const isMobile = width < 768;
-
-const galleryStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  container: {
-    width: isMobile ? "95%" : "80%",
-    maxWidth: 750,
-    maxHeight: "88%",
-    backgroundColor: "white",
-    borderRadius: 18,
-    padding: 22,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 15,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#0a0f33",
-  },
-  subtitle: {
-    fontSize: 13,
-    color: "#666",
-    marginTop: 2,
-  },
-  closeBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#f0f0f0",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  closeBtnText: {
-    fontSize: 16,
-    color: "#555",
-    fontWeight: "bold",
-  },
-  uploadBtn: {
-    backgroundColor: "#2b5fff",
-    padding: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  uploadBtnDisabled: { opacity: 0.6 },
-  uploadBtnInner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  uploadBtnText: {
-    color: "white",
-    fontWeight: "600",
-    fontSize: 15,
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    paddingBottom: 10,
-  },
-  imageWrapper: {
-    width: isMobile ? "30%" : "22%",
-    position: "relative",
-  },
-  thumbnail: {
-    width: "100%",
-    aspectRatio: 1,
-    borderRadius: 10,
-    backgroundColor: "#f0f0f0",
-  },
-  deleteBtn: {
-    position: "absolute",
-    top: 5,
-    right: 5,
-    backgroundColor: "rgba(220,53,69,0.9)",
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  deleteBtnText: {
-    color: "white",
-    fontSize: 11,
-    fontWeight: "bold",
-  },
-  imageFilename: {
-    fontSize: 10,
-    color: "#666",
-    marginTop: 4,
-    textAlign: "center",
-  },
-  center: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 40,
-  },
-  loadingText: {
-    marginTop: 12,
-    color: "#666",
-    fontSize: 14,
-  },
-  emptyIcon: {
-    fontSize: 52,
-    marginBottom: 14,
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: "#0a0f33",
-    marginBottom: 6,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: "#888",
-    textAlign: "center",
-  },
-  fullscreenOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.93)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  fullscreenImage: {
-    width: "92%",
-    height: "75%",
-  },
-  fullscreenClose: {
-    position: "absolute",
-    top: 44,
-    right: 20,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-  },
-  fullscreenCloseText: {
-    color: "white",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  fullscreenDelete: {
-    position: "absolute",
-    bottom: 44,
-    backgroundColor: "#dc3545",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 10,
-  },
-  fullscreenDeleteText: {
-    color: "white",
-    fontWeight: "600",
-    fontSize: 15,
-  },
-});
-
-// ─── Interim Dates Section ─────────────────────────────────────────────────────
-const interimStyles = StyleSheet.create({
-  section: {
-    marginHorizontal: isMobile ? 12 : 20,
-    marginBottom: 20,
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 18,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 14,
-    gap: 8,
-  },
-  sectionIcon: {
-    fontSize: 18,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0a0f33",
-  },
-  timeline: {
-    paddingLeft: 8,
-  },
-  timelineItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 12,
-  },
-  timelineDotContainer: {
-    alignItems: "center",
-    width: 28,
-    marginRight: 12,
-  },
-  timelineDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: "#2b5fff",
-    marginTop: 3,
-  },
-  timelineDotPast: {
-    backgroundColor: "#28a745",
-  },
-  timelineDotFuture: {
-    backgroundColor: "#2b5fff",
-  },
-  timelineLine: {
-    width: 2,
-    flex: 1,
-    backgroundColor: "#e0e0e0",
-    marginTop: 4,
-    minHeight: 16,
-  },
-  timelineContent: {
-    flex: 1,
-    backgroundColor: "#f8f9ff",
-    borderRadius: 10,
-    padding: 12,
-    borderLeftWidth: 3,
-    borderLeftColor: "#2b5fff",
-  },
-  timelineContentPast: {
-    borderLeftColor: "#28a745",
-    backgroundColor: "#f0fff4",
-  },
-  timelineDate: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#2b5fff",
-    marginBottom: 2,
-  },
-  timelineDatePast: {
-    color: "#28a745",
-  },
-  timelineLabel: {
-    fontSize: 12,
-    color: "#666",
-  },
-  timelineBadge: {
-    alignSelf: "flex-start",
-    marginTop: 4,
-    backgroundColor: "#e8f5e9",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  timelineBadgeText: {
-    fontSize: 10,
-    color: "#28a745",
-    fontWeight: "600",
-  },
-  emptyText: {
-    fontSize: 13,
-    color: "#999",
-    fontStyle: "italic",
-    textAlign: "center",
-    paddingVertical: 10,
-  },
-});
-
-// Helper: format date nicely
-const formatDateLong = (dateString) => {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  const months = [
-    "Januar", "Februar", "März", "April", "Mai", "Juni",
-    "Juli", "August", "September", "Oktober", "November", "Dezember"
-  ];
-  const days = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
-  return `${days[date.getDay()]}, ${date.getDate()}. ${months[date.getMonth()]} ${date.getFullYear()}`;
-};
-
-// ─── InterimDatesSection Component ────────────────────────────────────────────
-const InterimDatesSection = ({ interimDates, startDate, endDate }) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const allDates = [
-    { date: startDate, label: "Projektstart", type: "start" },
-    ...(interimDates || []).map((d, i) => ({
-      date: d,
-      label: `Zwischentermin ${i + 1}`,
-      type: "interim",
-    })),
-    { date: endDate, label: "Projektende", type: "end" },
-  ].filter((d) => d.date);
-
-  return (
-    <View style={interimStyles.section}>
-      <View style={interimStyles.sectionHeader}>
-        <Text style={interimStyles.sectionIcon}>📅</Text>
-        <Text style={interimStyles.sectionTitle}>Projektzeitplan</Text>
-      </View>
-
-      {allDates.length === 0 ? (
-        <Text style={interimStyles.emptyText}>Keine Termine vorhanden</Text>
-      ) : (
-        <View style={interimStyles.timeline}>
-          {allDates.map((item, index) => {
-            const itemDate = new Date(item.date);
-            const isPast = itemDate < today;
-            const isLast = index === allDates.length - 1;
-
-            const dotStyle = [
-              interimStyles.timelineDot,
-              isPast ? interimStyles.timelineDotPast : interimStyles.timelineDotFuture,
-            ];
-
-            const contentStyle = [
-              interimStyles.timelineContent,
-              isPast && interimStyles.timelineContentPast,
-            ];
-
-            const dateStyle = [
-              interimStyles.timelineDate,
-              isPast && interimStyles.timelineDatePast,
-            ];
-
-            return (
-              <View key={index} style={interimStyles.timelineItem}>
-                <View style={interimStyles.timelineDotContainer}>
-                  <View style={dotStyle} />
-                  {!isLast && <View style={interimStyles.timelineLine} />}
-                </View>
-                <View style={contentStyle}>
-                  <Text style={dateStyle}>{formatDateLong(item.date)}</Text>
-                  <Text style={interimStyles.timelineLabel}>{item.label}</Text>
-                  {isPast && (
-                    <View style={interimStyles.timelineBadge}>
-                      <Text style={interimStyles.timelineBadgeText}>✓ Vergangen</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      )}
-    </View>
-  );
-};
-
-// ─── Main ProjectDetailModal ───────────────────────────────────────────────────
-const ProjectDetailModal = ({
-  visible,
-  onClose,
-  selectedProject,
-  projectMembers,
-  isAdmin,
-  canEditProject,
-  canDeleteProject,
-  canManageProjectMembers,
-  onOpenEditProject,
-  onOpenAddMember,
-  onDeleteProject,
-  onOpenTaskModal,
-  onEditTask,
-  onDeleteTask,
-  onMoveTask,
-  onRemoveMember,
-  getTasksByStatus,
-  getStatusLabel,
-  getImportanceColor,
-  getImportanceLabel,
-  formatDate,
-  onUpdateInterimDates,
-}) => {
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [imageGalleryVisible, setImageGalleryVisible] = useState(false);
-  const [interimModalVisible, setInterimModalVisible] = useState(false);
-  const [newInterimDate, setNewInterimDate] = useState("");
-  const [interimDates, setInterimDates] = useState([]);
-  const [savingInterim, setSavingInterim] = useState(false);
-
-  // Sync interimDates with selectedProject whenever it changes
-  React.useEffect(() => {
-    if (selectedProject?.interimDates) {
-      setInterimDates([...selectedProject.interimDates].sort());
-    }
-  }, [selectedProject?.interimDates]);
-
-  const openInterimModal = () => {
-    setInterimDates(selectedProject?.interimDates ? [...selectedProject.interimDates].sort() : []);
-    setNewInterimDate("");
-    setInterimModalVisible(true);
-  };
-
-  const addInterimDate = () => {
-    const trimmed = newInterimDate.trim();
-    if (!trimmed) return;
-    if (interimDates.includes(trimmed)) return;
-    setInterimDates([...interimDates, trimmed].sort());
-    setNewInterimDate("");
-  };
-
-  const removeInterimDate = (date) => {
-    setInterimDates(interimDates.filter(d => d !== date));
-  };
-
-  const saveInterimDates = async () => {
-    if (!onUpdateInterimDates) return;
-    setSavingInterim(true);
-    await onUpdateInterimDates(interimDates);
-    setSavingInterim(false);
-    setInterimModalVisible(false);
-  };
-
-  return (
-    <Modal
-      animationType="fade"
-      transparent
+      transparent={true}
       visible={visible}
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
-        <View style={styles.detailModalContent}>
-          <SafeAreaView edges={["top"]} style={{ flex: 0, backgroundColor: "white" }} />
+        <View style={styles.modalContent}>
 
-          <ScrollView>
-
-            {/* ── Header ── */}
-            <View style={styles.detailHeader}>
-              <TouchableOpacity onPress={onClose} style={styles.backButton}>
-                <Text style={styles.backButtonText}>← Zurück zu Projekte</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dotsButton}
-                onPress={() => setMenuVisible(true)}
-              >
-                <Text style={styles.dotsButtonText}>⋮</Text>
-              </TouchableOpacity>
+          {/* Header */}
+          <View style={styles.modalHeader}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <Text style={styles.modalTitle} numberOfLines={2}>{project.name}</Text>
+              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(project.status), marginTop: 6 }]}>
+                <Text style={styles.statusText}>{getStatusLabel(project.status)}</Text>
+              </View>
             </View>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Text style={styles.closeButtonText}>✕</Text>
+            </TouchableOpacity>
+          </View>
 
-            {/* ── Dropdown Menü ── */}
-            {menuVisible && (
-              <>
-                <TouchableOpacity
-                  style={styles.menuOverlay}
-                  onPress={() => setMenuVisible(false)}
-                />
-                <View style={styles.menuDropdown}>
-                  {canEditProject && (
-                    <TouchableOpacity
-                      style={[styles.menuItem, styles.menuItemBorder]}
-                      onPress={() => {
-                        setMenuVisible(false);
-                        onOpenEditProject();
-                      }}
-                    >
-                      <Text style={styles.menuItemText}>Bearbeiten</Text>
-                    </TouchableOpacity>
-                  )}
-                  {canManageProjectMembers && (
-                    <TouchableOpacity
-                      style={[styles.menuItem, styles.menuItemBorder]}
-                      onPress={() => {
-                        setMenuVisible(false);
-                        onOpenAddMember();
-                      }}
-                    >
-                      <Text style={styles.menuItemText}>
-                        Mitarbeiter hinzufügen
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+          <ScrollView showsVerticalScrollIndicator={false}>
 
-                  <TouchableOpacity
-                    style={[styles.menuItem, styles.menuItemBorder]}
-                    onPress={() => {
-                      setMenuVisible(false);
-                      setImageGalleryVisible(true);
-                    }}
-                  >
-                    <Text style={styles.menuItemText}>Bilder</Text>
-                  </TouchableOpacity>
-
-                  {canEditProject && (
-                    <TouchableOpacity
-                      style={[styles.menuItem, styles.menuItemBorder]}
-                      onPress={() => {
-                        setMenuVisible(false);
-                        openInterimModal();
-                      }}
-                    >
-                      <Text style={styles.menuItemText}>Zwischentermine hinzufügen</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  {canDeleteProject && (
-                    <TouchableOpacity
-                      style={[styles.menuItem, styles.menuItemDanger]}
-                      onPress={() => {
-                        setMenuVisible(false);
-                        onDeleteProject();
-                      }}
-                    >
-                      <Text
-                        style={[styles.menuItemText, styles.menuItemTextDanger]}
-                      >
-                        Löschen
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </>
+            {/* Beschreibung */}
+            {!!project.description && (
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Beschreibung</Text>
+                <Text style={styles.detailDescription}>{project.description}</Text>
+              </View>
             )}
 
-            {/* ── Projekt Info ── */}
-            <View style={styles.projectInfo}>
-              <View style={styles.projectInfoHeader}>
-                <Text style={styles.detailTitle}>{selectedProject?.title}</Text>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    selectedProject?.status === "in-progress" && styles.statusInProgress,
-                    selectedProject?.status === "completed" && styles.statusCompleted,
-                    selectedProject?.status === "planning" && styles.statusPlanning,
-                  ]}
-                >
-                  <Text style={styles.statusText}>
-                    {getStatusLabel(selectedProject?.status)}
+            {/* Info-Karte */}
+            <View style={styles.statCard}>
+              {!!project.client_name && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <MaterialCommunityIcons name="account-tie" size={18} color="#666" />
+                  <Text style={styles.statCardLabel}>Kunde</Text>
+                  <Text style={[styles.statCardValue, { fontSize: 14, fontWeight: '500' }]}>{project.client_name}</Text>
+                </View>
+              )}
+              {!!project.location && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <MaterialCommunityIcons name="map-marker" size={18} color="#666" />
+                  <Text style={styles.statCardLabel}>Standort</Text>
+                  <Text style={[styles.statCardValue, { fontSize: 14, fontWeight: '500' }]}>{project.location}</Text>
+                </View>
+              )}
+              {(project.start_date || project.end_date) && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <MaterialCommunityIcons name="calendar-range" size={18} color="#666" />
+                  <Text style={styles.statCardLabel}>Zeitraum</Text>
+                  <Text style={[styles.statCardValue, { fontSize: 14, fontWeight: '500', flex: 1 }]}>
+                    {formatDate(project.start_date)} – {formatDate(project.end_date)}
                   </Text>
                 </View>
+              )}
+              {project.budget != null && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <MaterialCommunityIcons name="currency-eur" size={18} color="#666" />
+                  <Text style={styles.statCardLabel}>Budget</Text>
+                  <Text style={[styles.statCardValue, { fontSize: 14, fontWeight: '500' }]}>
+                    {Number(project.budget).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* ✅ SharePoint-Link */}
+            {project.sharepoint_url ? (
+              <TouchableOpacity
+                style={[styles.editButton, { backgroundColor: '#0078d4', flexDirection: 'row', gap: 10, marginBottom: 16 }]}
+                onPress={handleOpenSharePoint}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="microsoft-sharepoint" size={20} color="white" />
+                <Text style={[styles.editButtonText, { flex: 1 }]}>In SharePoint öffnen</Text>
+                <MaterialCommunityIcons name="open-in-new" size={16} color="white" />
+              </TouchableOpacity>
+            ) : (
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                backgroundColor: '#f5f5f5', borderRadius: 10, padding: 14, marginBottom: 16, gap: 10 }}>
+                <MaterialCommunityIcons name="microsoft-sharepoint" size={20} color="#ccc" />
+                <Text style={{ color: '#ccc', fontSize: 14 }}>Kein SharePoint-Link hinterlegt</Text>
               </View>
-              <Text style={styles.detailDescription}>
-                {selectedProject?.description}
+            )}
+
+            {/* ✅ LAZY LOADING: Projektbilder */}
+            <View style={{ marginBottom: 20 }}>
+              <Text style={styles.membersSectionTitle}>
+                Projektbilder{images.length > 0 ? ` (${images.length})` : ''}
               </Text>
-            </View>
 
-            {/* ── Stats Cards ── */}
-            <View style={styles.statsCards}>
-              <View style={styles.statCard}>
-                <Text style={styles.statCardLabel}>Fortschritt</Text>
-                <Text style={styles.statCardValue}>
-                  {selectedProject?.progress}%
-                </Text>
-                <View style={styles.progressBarDetail}>
-                  <View
-                    style={[
-                      styles.progressFillDetail,
-                      { width: `${selectedProject?.progress}%` },
-                    ]}
-                  />
+              {loadingImages ? (
+                <View style={[styles.loadingContainer, { padding: 20 }]}>
+                  <ActivityIndicator size="small" color="#2b5fff" />
+                  <Text style={styles.loadingText}>Lade Bilder...</Text>
                 </View>
-              </View>
-
-              <View style={styles.statCard}>
-                <Text style={styles.statCardLabel}>Startdatum</Text>
-                <Text style={styles.statCardValue}>
-                  {formatDate(selectedProject?.startDate || "")}
-                </Text>
-              </View>
-
-              <View style={styles.statCard}>
-                <Text style={styles.statCardLabel}>Enddatum</Text>
-                <Text style={styles.statCardValue}>
-                  {formatDate(selectedProject?.endDate || "")}
-                </Text>
-              </View>
-
-              <View style={styles.statCard}>
-                <Text style={styles.statCardLabel}>Team</Text>
-                <Text style={styles.statCardValue}>
-                  {selectedProject?.teamMembers} Mitglieder
-                </Text>
-              </View>
-
-              <View style={styles.statCard}>
-                <Text style={styles.statCardLabel}>Tasks</Text>
-                <Text style={styles.statCardValue}>
-                  {getTasksByStatus("completed").length}/
-                  {selectedProject?.tasks?.length || 0}
-                </Text>
-                <Text style={styles.statCardSubtext}>abgeschlossen</Text>
-              </View>
-
-              {/* ── Zwischentermine count card ── */}
-              {selectedProject?.interimDates &&
-                selectedProject.interimDates.length > 0 && (
-                  <View style={styles.statCard}>
-                    <Text style={styles.statCardLabel}>Zwischentermine</Text>
-                    <Text style={styles.statCardValue}>
-                      {selectedProject.interimDates.length}
-                    </Text>
-                    <Text style={styles.statCardSubtext}>geplant</Text>
-                  </View>
-                )}
-            </View>
-
-            {/* ── ✅ NEU: Projektzeitplan mit Zwischenterminen ── */}
-            {selectedProject && (
-              <InterimDatesSection
-                interimDates={selectedProject.interimDates}
-                startDate={selectedProject.startDate}
-                endDate={selectedProject.endDate}
-              />
-            )}
-
-            {/* ── Team Mitglieder ── */}
-            {isAdmin && projectMembers.length > 0 && (
-              <View style={styles.membersSection}>
-                <Text style={styles.membersSectionTitle}>Team Mitglieder</Text>
-                <View style={styles.membersList}>
-                  {projectMembers.map((member, index) => {
-                    const displayName =
-                      member.user_name?.trim() !== ""
-                        ? member.user_name
-                        : member.user_email;
-                    return (
-                      <View key={index} style={styles.memberItem}>
-                        <View style={styles.memberInfo}>
-                          <Text style={styles.memberIcon}>👤</Text>
-                          <View>
-                            <Text style={styles.memberName}>{displayName}</Text>
-                            {member.user_name?.trim() !== "" && (
-                              <Text style={styles.memberEmail}>
-                                {member.user_email}
-                              </Text>
-                            )}
-                          </View>
-                        </View>
-                        {canManageProjectMembers && (
-                          <TouchableOpacity
-                            style={styles.removeMemberButton}
-                            onPress={() => onRemoveMember(member.user_id)}
-                          >
-                            <Text style={styles.removeMemberButtonText}>✕</Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    );
-                  })}
+              ) : images.length === 0 ? (
+                <View style={[styles.memberItem, { justifyContent: 'center', padding: 24, flexDirection: 'column' }]}>
+                  <MaterialCommunityIcons name="image-off" size={36} color="#ccc" />
+                  <Text style={{ color: '#ccc', marginTop: 8, fontSize: 14 }}>Keine Bilder vorhanden</Text>
                 </View>
-              </View>
-            )}
-
-            {/* ── Tasks Kanban ── */}
-            <View style={styles.tasksSection}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.tasksColumns}>
-
-                  {/* TODO */}
-                  <View style={styles.taskColumn}>
-                    <View style={styles.taskColumnHeader}>
-                      <Text style={styles.taskColumnTitle}>To Do</Text>
-                      <Text style={styles.taskColumnCount}>
-                        {getTasksByStatus("todo").length}
-                      </Text>
-                    </View>
-                    {getTasksByStatus("todo").map((task) => (
-                      <View key={task.id} style={styles.taskItem}>
-                        <View style={styles.taskItemHeader}>
-                          <Text style={styles.taskItemName}>{task.name}</Text>
-                          <TouchableOpacity
-                            onPress={() => onEditTask(task)}
-                            style={styles.taskIconButton}
-                          >
-                            <Text>✏️</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() => onDeleteTask(task.id)}
-                            style={styles.taskIconButton}
-                          >
-                            <Text>🗑</Text>
-                          </TouchableOpacity>
-                        </View>
-                        {task.dueDate && (
-                          <Text style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>
-                            📅 {task.dueDate}
-                          </Text>
-                        )}
-                        <View
-                          style={[
-                            styles.importanceBadge,
-                            { backgroundColor: getImportanceColor(task.importance) },
-                          ]}
-                        >
-                          <Text style={styles.importanceBadgeText}>
-                            {getImportanceLabel(task.importance)}
-                          </Text>
-                        </View>
-                        {task.assignedTo && (
-                          <View style={styles.taskAssignee}>
-                            <Text>👤</Text>
-                            <Text style={styles.taskAssigneeText}>
-                              {task.assignedTo}
-                            </Text>
-                          </View>
-                        )}
-                        <View style={styles.taskMoveButtons}>
-                          <TouchableOpacity
-                            style={styles.moveButton}
-                            onPress={() => onMoveTask(task.id, "in-progress")}
-                          >
-                            <Text style={styles.moveButtonText}>→</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ))}
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {images.map((img) => (
                     <TouchableOpacity
-                      style={styles.addTaskButton}
-                      onPress={onOpenTaskModal}
+                      key={img.id}
+                      style={{ marginRight: 10, width: 120 }}
+                      onPress={() => imageData[img.id] && setSelectedImage(img.id)}
                     >
-                      <Text style={styles.addTaskButtonText}>+ Task hinzufügen</Text>
+                      {imageData[img.id] ? (
+                        <Image
+                          source={{ uri: `data:image/jpeg;base64,${imageData[img.id]}` }}
+                          style={{ width: 120, height: 90, borderRadius: 8 }}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={{ width: 120, height: 90, borderRadius: 8,
+                          backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }}>
+                          <ActivityIndicator size="small" color="#2b5fff" />
+                        </View>
+                      )}
+                      {!!img.filename && (
+                        <Text style={{ fontSize: 11, color: '#999', marginTop: 4, textAlign: 'center' }}
+                          numberOfLines={1}>{img.filename}</Text>
+                      )}
                     </TouchableOpacity>
-                  </View>
-
-                  {/* IN PROGRESS */}
-                  <View style={styles.taskColumn}>
-                    <View style={styles.taskColumnHeader}>
-                      <Text style={styles.taskColumnTitle}>In Progress</Text>
-                      <Text style={styles.taskColumnCount}>
-                        {getTasksByStatus("in-progress").length}
-                      </Text>
-                    </View>
-                    {getTasksByStatus("in-progress").map((task) => (
-                      <View key={task.id} style={styles.taskItem}>
-                        <View style={styles.taskItemHeader}>
-                          <Text style={styles.taskItemName}>{task.name}</Text>
-                        </View>
-                        {task.dueDate && (
-                          <Text style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>
-                            📅 {task.dueDate}
-                          </Text>
-                        )}
-                        <View
-                          style={[
-                            styles.importanceBadge,
-                            { backgroundColor: getImportanceColor(task.importance) },
-                          ]}
-                        >
-                          <Text style={styles.importanceBadgeText}>
-                            {getImportanceLabel(task.importance)}
-                          </Text>
-                        </View>
-                        {task.assignedTo && (
-                          <View style={styles.taskAssignee}>
-                            <Text>👤</Text>
-                            <Text style={styles.taskAssigneeText}>
-                              {task.assignedTo}
-                            </Text>
-                          </View>
-                        )}
-                        <View style={styles.taskMoveButtons}>
-                          <TouchableOpacity
-                            style={styles.moveButton}
-                            onPress={() => onMoveTask(task.id, "todo")}
-                          >
-                            <Text style={styles.moveButtonText}>←</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.moveButton}
-                            onPress={() => onMoveTask(task.id, "completed")}
-                          >
-                            <Text style={styles.moveButtonText}>→</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-
-                  {/* COMPLETED */}
-                  <View style={styles.taskColumn}>
-                    <View style={styles.taskColumnHeader}>
-                      <Text style={styles.taskColumnTitle}>Completed</Text>
-                      <Text style={styles.taskColumnCount}>
-                        {getTasksByStatus("completed").length}
-                      </Text>
-                    </View>
-                    {getTasksByStatus("completed").map((task) => (
-                      <View
-                        key={task.id}
-                        style={[styles.taskItem, styles.taskItemCompleted]}
-                      >
-                        <View style={styles.taskItemHeader}>
-                          <Text style={styles.taskItemName}>{task.name}</Text>
-                        </View>
-                        {task.dueDate && (
-                          <Text style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>
-                            📅 {task.dueDate}
-                          </Text>
-                        )}
-                        <View
-                          style={[
-                            styles.importanceBadge,
-                            { backgroundColor: getImportanceColor(task.importance) },
-                          ]}
-                        >
-                          <Text style={styles.importanceBadgeText}>
-                            {getImportanceLabel(task.importance)}
-                          </Text>
-                        </View>
-                        {task.assignedTo && (
-                          <View style={styles.taskAssignee}>
-                            <Text>👤</Text>
-                            <Text style={styles.taskAssigneeText}>
-                              {task.assignedTo}
-                            </Text>
-                          </View>
-                        )}
-                        <View style={styles.taskMoveButtons}>
-                          <TouchableOpacity
-                            style={styles.moveButton}
-                            onPress={() => onMoveTask(task.id, "in-progress")}
-                          >
-                            <Text style={styles.moveButtonText}>←</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-
-                </View>
-              </ScrollView>
+                  ))}
+                </ScrollView>
+              )}
             </View>
+
+            {/* Aktionsbuttons */}
+            <View style={styles.modalButtons}>
+              {isAdmin && onEdit && (
+                <TouchableOpacity
+                  style={[styles.saveButton, { flexDirection: 'row', gap: 8 }]}
+                  onPress={() => { onClose(); onEdit(project); }}
+                >
+                  <MaterialCommunityIcons name="pencil" size={18} color="white" />
+                  <Text style={styles.saveButtonText}>Bearbeiten</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+                <Text style={styles.cancelButtonText}>Schließen</Text>
+              </TouchableOpacity>
+            </View>
+
           </ScrollView>
         </View>
       </View>
 
-      {/* ── Zwischentermine Modal ── */}
+      {/* Vollbild-Modal */}
       <Modal
+        visible={!!selectedImage}
+        transparent={true}
         animationType="fade"
-        transparent
-        visible={interimModalVisible}
-        onRequestClose={() => setInterimModalVisible(false)}
+        onRequestClose={() => setSelectedImage(null)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Zwischentermine</Text>
-              <TouchableOpacity
-                onPress={() => setInterimModalVisible(false)}
-                style={styles.closeButton}
-              >
-                <Text style={styles.closeButtonText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView>
-              {/* Existing dates */}
-              {interimDates.length > 0 ? (
-                <View style={interimModalStyles.datesList}>
-                  {interimDates.map((date, index) => (
-                    <View key={index} style={interimModalStyles.dateRow}>
-                      <View style={interimModalStyles.dateBadge}>
-                        <Text style={interimModalStyles.dateBadgeIcon}></Text>
-                        <Text style={interimModalStyles.dateText}>{date}</Text>
-                      </View>
-                      <TouchableOpacity
-                        style={interimModalStyles.removeBtn}
-                        onPress={() => removeInterimDate(date)}
-                      >
-                        <Text style={interimModalStyles.removeBtnText}>✕</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <View style={interimModalStyles.emptyHint}>
-                  <Text style={interimModalStyles.emptyHintText}>
-                    Noch keine Zwischentermine vorhanden
-                  </Text>
-                </View>
-              )}
-
-              {/* Add new date */}
-              <View style={interimModalStyles.addRow}>
-                <TextInput
-                  style={interimModalStyles.input}
-                  placeholder="YYYY-MM-DD (z.B. 2026-06-15)"
-                  value={newInterimDate}
-                  onChangeText={setNewInterimDate}
-                />
-                <TouchableOpacity
-                  style={[interimModalStyles.addBtn, !newInterimDate.trim() && interimModalStyles.addBtnDisabled]}
-                  onPress={addInterimDate}
-                  disabled={!newInterimDate.trim()}
-                >
-                  <Text style={interimModalStyles.addBtnText}>+</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Save / Cancel */}
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => setInterimModalVisible(false)}
-                >
-                  <Text style={styles.cancelButtonText}>Abbrechen</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.saveButton, savingInterim && styles.saveButtonDisabled]}
-                  onPress={saveInterimDates}
-                  disabled={savingInterim}
-                >
-                  <Text style={styles.saveButtonText}>
-                    {savingInterim ? "Wird gespeichert..." : "Speichern"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)',
+            justifyContent: 'center', alignItems: 'center' }}
+          activeOpacity={1}
+          onPress={() => setSelectedImage(null)}
+        >
+          {selectedImage && imageData[selectedImage] && (
+            <Image
+              source={{ uri: `data:image/jpeg;base64,${imageData[selectedImage]}` }}
+              style={{ width: '100%', height: '80%' }}
+              resizeMode="contain"
+            />
+          )}
+          <TouchableOpacity
+            style={{ position: 'absolute', top: 50, right: 20,
+              backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: 8 }}
+            onPress={() => setSelectedImage(null)}
+          >
+            <MaterialCommunityIcons name="close" size={28} color="white" />
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
-      {/* ── Image Gallery Modal ── */}
-      {selectedProject && (
-        <ImageGalleryModal
-          visible={imageGalleryVisible}
-          onClose={() => setImageGalleryVisible(false)}
-          project={selectedProject}
-          isAdmin={isAdmin}
-        />
-      )}
     </Modal>
   );
 };
-
-
-// ─── Interim Modal Styles ──────────────────────────────────────────────────────
-const interimModalStyles = StyleSheet.create({
-  datesList: {
-    marginBottom: 16,
-    gap: 8,
-  },
-  dateRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#fff8e1",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: "#ffe082",
-  },
-  dateBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  dateBadgeIcon: {
-    fontSize: 16,
-  },
-  dateText: {
-    fontSize: 15,
-    fontWeight: "500",
-    color: "#0a0f33",
-  },
-  removeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#ffebee",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  removeBtnText: {
-    color: "#dc3545",
-    fontWeight: "bold",
-    fontSize: 13,
-  },
-  emptyHint: {
-    alignItems: "center",
-    paddingVertical: 24,
-    backgroundColor: "#f9f9f9",
-    borderRadius: 10,
-    marginBottom: 16,
-  },
-  emptyHintText: {
-    color: "#999",
-    fontSize: 14,
-  },
-  addRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 20,
-    alignItems: "center",
-  },
-  input: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: "#0a0f33",
-  },
-  addBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: "#2b5fff",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  addBtnDisabled: {
-    backgroundColor: "#ccc",
-  },
-  addBtnText: {
-    color: "white",
-    fontSize: 24,
-    fontWeight: "600",
-    lineHeight: 26,
-  },
-});
 
 export default ProjectDetailModal;

@@ -62,6 +62,7 @@ const Employees = () => {
     }
   };
 
+  // ✅ LAZY LOADING: Nur has_profile_picture aus /users, dann Bild separat nachladen
   const loadEmployees = async () => {
     try {
       setLoading(true);
@@ -72,16 +73,26 @@ const Employees = () => {
       if (response.ok) {
         const users = Array.isArray(data.users) ? data.users : [];
         
-        // Profilbilder nachladen
-        const usersWithPictures = await Promise.all(
-          users.map(async (user) => {
-            const picResponse = await fetch(`${API_URL}/getuserbyID/${user.id}`);
-            const picData = await picResponse.json();
-            return { ...user, profile_picture: picData.profile_picture || null };
-          })
-        );
-        
-        setEmployees(usersWithPictures);
+        // Erst alle User ohne Bilder setzen (schnell)
+        setEmployees(users.map(u => ({ ...u, profile_picture: null })));
+        setLoading(false);
+
+        // Dann Profilbilder lazy nachladen
+        users.forEach(async (user) => {
+          if (user.has_profile_picture) {
+            try {
+              const picResponse = await fetch(`${API_URL}/profile-picture/${user.id}`);
+              const picData = await picResponse.json();
+              if (picResponse.ok && picData.profile_picture) {
+                setEmployees(prev =>
+                  prev.map(e => e.id === user.id ? { ...e, profile_picture: picData.profile_picture } : e)
+                );
+              }
+            } catch (err) {
+              console.log(`Could not load profile picture for user ${user.id}`);
+            }
+          }
+        });
       }
     } catch (error) {
       console.error("Error loading employees:", error);
@@ -110,7 +121,6 @@ const Employees = () => {
   };
 
   const handleCreateEmployee = async () => {
-    // Validierung
     if (!employeeForm.email.trim()) {
       showInfo("Fehler", "Bitte gib eine Email-Adresse ein!");
       return;
@@ -180,9 +190,7 @@ const Employees = () => {
 
           const response = await fetch(
             `${API_URL}/deleteuser/${selectedEmployee.id}`,
-            {
-              method: "DELETE",
-            }
+            { method: "DELETE" }
           );
 
           const data = await response.json();
@@ -211,30 +219,17 @@ const Employees = () => {
           setLoading(false);
         }
       },
-      () => {
-        console.log("Löschen abgebrochen");
-      },
-      {
-        confirmText: "Löschen",
-        cancelText: "Abbrechen"
-      }
+      () => {},
+      { confirmText: "Löschen", cancelText: "Abbrechen" }
     );
   };
 
   const openCreateModal = () => {
-    setEmployeeForm({
-      email: "",
-      password: "",
-      first_name: "",
-      last_name: "",
-      role: "employee"
-    });
+    setEmployeeForm({ email: "", password: "", first_name: "", last_name: "", role: "employee" });
     setCreateModalVisible(true);
   };
 
-  const closeCreateModal = () => {
-    setCreateModalVisible(false);
-  };
+  const closeCreateModal = () => setCreateModalVisible(false);
 
   const openEmployeeDetail = (employee) => {
     setSelectedEmployee({ ...employee });
@@ -264,15 +259,6 @@ const Employees = () => {
     }
   };
 
-  const getRoleStats = () => {
-    const admins = employees.filter(e => e.role === "admin").length;
-    const employeesCount = employees.filter(e => e.role === "employee").length;
-    const guests = employees.filter(e => e.role === "guest").length;
-    
-    return { admins, employees: employeesCount, guests };
-  };
-
-  // Zeige Access Denied wenn nicht Admin
   if (!isAdmin) {
     return (
       <Layout>
@@ -287,25 +273,19 @@ const Employees = () => {
     );
   }
 
-  const stats = getRoleStats();
-
   return (
     <Layout>
       <ScrollView style={styles.container}>
-        {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>Mitarbeiterverwaltung</Text>
-            <Text style={styles.subtitle}>
-              Verwalte alle Benutzer des Systems
-            </Text>
+            <Text style={styles.subtitle}>Verwalte alle Benutzer des Systems</Text>
           </View>
           <TouchableOpacity style={styles.newButton} onPress={openCreateModal}>
             <Text style={styles.newButtonText}>+ Neuer Mitarbeiter</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Search */}
         <View style={styles.searchContainer}>
           <MaterialCommunityIcons name="magnify" size={20} color="#999" style={styles.searchIcon} />
           <TextInput
@@ -317,7 +297,6 @@ const Employees = () => {
           />
         </View>
 
-        {/* Employees List */}
         {loading && employees.length === 0 ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#2b5fff" />
@@ -330,8 +309,8 @@ const Employees = () => {
               {searchQuery ? "Keine Mitarbeiter gefunden" : "Noch keine Mitarbeiter"}
             </Text>
             <Text style={styles.emptyStateText}>
-              {searchQuery 
-                ? "Versuche es mit einem anderen Suchbegriff" 
+              {searchQuery
+                ? "Versuche es mit einem anderen Suchbegriff"
                 : "Erstelle deinen ersten Mitarbeiter"}
             </Text>
           </View>
@@ -350,19 +329,12 @@ const Employees = () => {
                         source={{ uri: `data:image/jpeg;base64,${employee.profile_picture}` }}
                         style={styles.employeeAvatarImage}
                       />
-                      ) : (
-                        <MaterialCommunityIcons name="account" size={30} color="white" />
-                      )}
+                    ) : (
+                      <MaterialCommunityIcons name="account" size={30} color="white" />
+                    )}
                   </View>
-                  <View
-                    style={[
-                      styles.roleBadge,
-                      { backgroundColor: getRoleColor(employee.role) }
-                    ]}
-                  >
-                    <Text style={styles.roleBadgeText}>
-                      {getRoleLabel(employee.role)}
-                    </Text>
+                  <View style={[styles.roleBadge, { backgroundColor: getRoleColor(employee.role) }]}>
+                    <Text style={styles.roleBadgeText}>{getRoleLabel(employee.role)}</Text>
                   </View>
                 </View>
 
@@ -383,12 +355,7 @@ const Employees = () => {
       </ScrollView>
 
       {/* Create Employee Modal */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={createModalVisible}
-        onRequestClose={closeCreateModal}
-      >
+      <Modal animationType="fade" transparent={true} visible={createModalVisible} onRequestClose={closeCreateModal}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -425,59 +392,30 @@ const Employees = () => {
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Rolle *</Text>
                 <View style={styles.roleButtons}>
-                  <TouchableOpacity
-                    style={[
-                      styles.roleButton,
-                      employeeForm.role === "admin" && styles.roleButtonAdmin
-                    ]}
-                    onPress={() => setEmployeeForm({...employeeForm, role: "admin"})}
-                  >
-                    <MaterialCommunityIcons 
-                      name="shield-account" 
-                      size={20} 
-                      color={employeeForm.role === "admin" ? "white" : "#dc3545"} 
-                    />
-                    <Text style={[
-                      styles.roleButtonText,
-                      employeeForm.role === "admin" && styles.roleButtonTextActive
-                    ]}>Admin</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.roleButton,
-                      employeeForm.role === "employee" && styles.roleButtonEmployee
-                    ]}
-                    onPress={() => setEmployeeForm({...employeeForm, role: "employee"})}
-                  >
-                    <MaterialCommunityIcons 
-                      name="account-group" 
-                      size={20} 
-                      color={employeeForm.role === "employee" ? "white" : "#2b5fff"} 
-                    />
-                    <Text style={[
-                      styles.roleButtonText,
-                      employeeForm.role === "employee" && styles.roleButtonTextActive
-                    ]}>Mitarbeiter</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.roleButton,
-                      employeeForm.role === "guest" && styles.roleButtonGuest
-                    ]}
-                    onPress={() => setEmployeeForm({...employeeForm, role: "guest"})}
-                  >
-                    <MaterialCommunityIcons 
-                      name="account" 
-                      size={20} 
-                      color={employeeForm.role === "guest" ? "white" : "#6c757d"} 
-                    />
-                    <Text style={[
-                      styles.roleButtonText,
-                      employeeForm.role === "guest" && styles.roleButtonTextActive
-                    ]}>Gast</Text>
-                  </TouchableOpacity>
+                  {[
+                    { value: "admin", icon: "shield-account", color: "#dc3545", label: "Admin" },
+                    { value: "employee", icon: "account-group", color: "#2b5fff", label: "Mitarbeiter" },
+                    { value: "guest", icon: "account", color: "#6c757d", label: "Gast" },
+                  ].map(({ value, icon, color, label }) => (
+                    <TouchableOpacity
+                      key={value}
+                      style={[
+                        styles.roleButton,
+                        employeeForm.role === value && { backgroundColor: color, borderColor: color }
+                      ]}
+                      onPress={() => setEmployeeForm({...employeeForm, role: value})}
+                    >
+                      <MaterialCommunityIcons
+                        name={icon}
+                        size={20}
+                        color={employeeForm.role === value ? "white" : color}
+                      />
+                      <Text style={[
+                        styles.roleButtonText,
+                        employeeForm.role === value && styles.roleButtonTextActive
+                      ]}>{label}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               </View>
 
@@ -507,13 +445,8 @@ const Employees = () => {
         </View>
       </Modal>
 
-      {/* Employee Detail Modal (Nur Anzeige + Löschen) */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={detailModalVisible}
-        onRequestClose={closeEmployeeDetail}
-      >
+      {/* Employee Detail Modal */}
+      <Modal animationType="fade" transparent={true} visible={detailModalVisible} onRequestClose={closeEmployeeDetail}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -536,15 +469,8 @@ const Employees = () => {
                       <MaterialCommunityIcons name="account" size={40} color="white" />
                     )}
                   </View>
-                  <View
-                    style={[
-                      styles.roleBadgeLarge,
-                      { backgroundColor: getRoleColor(selectedEmployee.role) }
-                    ]}
-                  >
-                    <Text style={styles.roleBadgeLargeText}>
-                      {getRoleLabel(selectedEmployee.role)}
-                    </Text>
+                  <View style={[styles.roleBadgeLarge, { backgroundColor: getRoleColor(selectedEmployee.role) }]}>
+                    <Text style={styles.roleBadgeLargeText}>{getRoleLabel(selectedEmployee.role)}</Text>
                   </View>
                 </View>
 
@@ -556,7 +482,6 @@ const Employees = () => {
                       <Text style={styles.detailInfoValue}>{selectedEmployee.email}</Text>
                     </View>
                   </View>
-
                   <View style={styles.detailInfoRow}>
                     <MaterialCommunityIcons name="account" size={20} color="#666" />
                     <View style={styles.detailInfoContent}>
@@ -566,17 +491,13 @@ const Employees = () => {
                       </Text>
                     </View>
                   </View>
-
                   <View style={styles.detailInfoRow}>
                     <MaterialCommunityIcons name="shield-account" size={20} color="#666" />
                     <View style={styles.detailInfoContent}>
                       <Text style={styles.detailInfoLabel}>Rolle</Text>
-                      <Text style={styles.detailInfoValue}>
-                        {getRoleLabel(selectedEmployee.role)}
-                      </Text>
+                      <Text style={styles.detailInfoValue}>{getRoleLabel(selectedEmployee.role)}</Text>
                     </View>
                   </View>
-
                   {selectedEmployee.last_login && (
                     <View style={styles.detailInfoRow}>
                       <MaterialCommunityIcons name="login" size={20} color="#666" />
@@ -584,9 +505,7 @@ const Employees = () => {
                         <Text style={styles.detailInfoLabel}>Letzter Login</Text>
                         <Text style={styles.detailInfoValue}>
                           {new Date(selectedEmployee.last_login).toLocaleDateString('de-DE', {
-                            day: '2-digit',
-                            month: 'long',
-                            year: 'numeric'
+                            day: '2-digit', month: 'long', year: 'numeric'
                           })}
                         </Text>
                       </View>
@@ -602,10 +521,7 @@ const Employees = () => {
                 </View>
 
                 <View style={styles.modalButtonsSingle}>
-                  <TouchableOpacity
-                    style={styles.deleteButtonLarge}
-                    onPress={handleDeleteEmployee}
-                  >
+                  <TouchableOpacity style={styles.deleteButtonLarge} onPress={handleDeleteEmployee}>
                     <MaterialCommunityIcons name="delete" size={20} color="white" />
                     <Text style={styles.deleteButtonLargeText}>Mitarbeiter löschen</Text>
                   </TouchableOpacity>
@@ -616,7 +532,6 @@ const Employees = () => {
         </View>
       </Modal>
 
-      {/* CustomAlert */}
       <CustomAlert {...alert} onDismiss={hideAlert} />
     </Layout>
   );

@@ -26,6 +26,7 @@ def format_project_response(project, db: Session):
         "start_date": str(project.start_date) if project.start_date else None,
         "end_date": str(project.end_date) if project.end_date else None,
         "interim_dates": [str(date) for date in project.interim_dates] if project.interim_dates else [],
+        "sharepoint_url": project.sharepoint_url,
         "created_by": project.created_by,
         "creator_email": creator.email if creator else None,
         "creator_name": f"{creator.first_name or ''} {creator.last_name or ''}".strip() if creator else None,

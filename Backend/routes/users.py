@@ -4,6 +4,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+from datetime import datetime
 from database import SessionLocal
 import models
 from utils.security import pwd_context
@@ -51,11 +52,6 @@ async def create_user(userdata: UserData, db: Session = Depends(get_db)):
 
 @router.get("/users")
 async def get_all_users(admin_user_id: int, db: Session = Depends(get_db)):
-    """
-    Admin-Endpoint: Zeigt alle User im System an
-    Nur für Admins zugänglich
-    """
-    # Prüfe ob der anfragende User ein Admin ist
     admin_user = db.query(models.Users).filter(models.Users.id == admin_user_id).first()
     if not admin_user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -68,6 +64,11 @@ async def get_all_users(admin_user_id: int, db: Session = Depends(get_db)):
         
         users_list = []
         for user in users:
+            # Prüfe ob Profilbild in profile_pictures Tabelle existiert
+            has_picture = db.query(models.ProfilePicture).filter(
+                models.ProfilePicture.user_id == user.id
+            ).first() is not None
+
             users_list.append({
                 "id": user.id,
                 "email": user.email,
@@ -75,7 +76,7 @@ async def get_all_users(admin_user_id: int, db: Session = Depends(get_db)):
                 "last_name": user.last_name,
                 "role": user.role,
                 "twofa_enabled": user.twofa_enabled,
-                "has_profile_picture": user.profile_picture is not None
+                "has_profile_picture": has_picture
             })
         
         return {
@@ -92,10 +93,13 @@ async def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
     if not result:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Konvertiere Profilbild zu Base64 wenn vorhanden
+    # Lade Profilbild aus profile_pictures Tabelle
     profile_picture_base64 = None
-    if result.profile_picture:
-        profile_picture_base64 = base64.b64encode(result.profile_picture).decode('utf-8')
+    picture = db.query(models.ProfilePicture).filter(
+        models.ProfilePicture.user_id == user_id
+    ).first()
+    if picture:
+        profile_picture_base64 = base64.b64encode(picture.image_data).decode('utf-8')
     
     return {
         "id": result.id,
@@ -109,23 +113,17 @@ async def get_user_by_id(user_id: int, db: Session = Depends(get_db)):
 
 @router.put("/update-user/{user_id}")
 async def update_user(user_id: int, request: UpdateUserRequest, db: Session = Depends(get_db)):
-    """
-    Aktualisiert Vor- und Nachname eines Users
-    """
     try:
-        # Hole den User aus der Datenbank
         user = db.query(models.Users).filter(models.Users.id == user_id).first()
         
         if not user:
             raise HTTPException(status_code=404, detail="User nicht gefunden")
         
-        # Aktualisiere die Felder (nur wenn sie im Request enthalten sind)
         if request.first_name is not None:
             user.first_name = request.first_name
         if request.last_name is not None:
             user.last_name = request.last_name
         
-        # Speichere in der Datenbank
         db.commit()
         db.refresh(user)
         
@@ -145,7 +143,6 @@ async def update_user(user_id: int, request: UpdateUserRequest, db: Session = De
         raise
     except Exception as e:
         db.rollback()
-        print(f"Error updating user: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Fehler beim Aktualisieren: {str(e)}")
 
 @router.post("/upload-profile-picture/{user_id}")
@@ -154,42 +151,38 @@ async def upload_profile_picture(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    """
-    Upload Profilbild für einen User
-    Akzeptiert: JPG, JPEG, PNG, GIF, WEBP
-    Max Größe: 5MB
-    """
     try:
-        # Prüfe ob User existiert
         user = db.query(models.Users).filter(models.Users.id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User nicht gefunden")
         
-        # Prüfe Dateityp
         allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"]
         if file.content_type not in allowed_types:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Ungültiger Dateityp. Erlaubt: JPG, PNG, GIF, WEBP"
-            )
+            raise HTTPException(status_code=400, detail="Ungültiger Dateityp. Erlaubt: JPG, PNG, GIF, WEBP")
         
-        # Lese Datei
         contents = await file.read()
         
-        # Prüfe Dateigröße (5MB = 5 * 1024 * 1024 bytes)
-        max_size = 5 * 1024 * 1024
-        if len(contents) > max_size:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Datei zu groß. Maximum: 5MB"
-            )
+        if len(contents) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Datei zu groß. Maximum: 5MB")
         
-        # Speichere Bild in Datenbank
-        user.profile_picture = contents
+        # Update oder Insert in profile_pictures Tabelle
+        existing = db.query(models.ProfilePicture).filter(
+            models.ProfilePicture.user_id == user_id
+        ).first()
+        
+        if existing:
+            existing.image_data = contents
+            existing.content_type = file.content_type
+            existing.updated_at = datetime.utcnow()
+        else:
+            db.add(models.ProfilePicture(
+                user_id=user_id,
+                image_data=contents,
+                content_type=file.content_type
+            ))
+        
         db.commit()
-        db.refresh(user)
         
-        # Konvertiere zu Base64 für Response
         profile_picture_base64 = base64.b64encode(contents).decode('utf-8')
         
         return {
@@ -204,60 +197,44 @@ async def upload_profile_picture(
         raise
     except Exception as e:
         db.rollback()
-        print(f"Error uploading profile picture: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Fehler beim Hochladen: {str(e)}")
 
 @router.get("/profile-picture/{user_id}")
 async def get_profile_picture(user_id: int, db: Session = Depends(get_db)):
-    """
-    Gibt das Profilbild eines Users zurück (als Binärdaten für <Image> Tag)
-    """
     try:
-        user = db.query(models.Users).filter(models.Users.id == user_id).first()
+        picture = db.query(models.ProfilePicture).filter(
+            models.ProfilePicture.user_id == user_id
+        ).first()
         
-        if not user:
-            raise HTTPException(status_code=404, detail="User nicht gefunden")
-        
-        if not user.profile_picture:
+        if not picture:
             raise HTTPException(status_code=404, detail="Kein Profilbild vorhanden")
         
-        # Gebe Bild als Response zurück
-        return Response(content=user.profile_picture, media_type="image/jpeg")
+        return Response(content=picture.image_data, media_type=picture.content_type or "image/jpeg")
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error getting profile picture: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Fehler beim Abrufen: {str(e)}")
 
 @router.delete("/profile-picture/{user_id}")
 async def delete_profile_picture(user_id: int, db: Session = Depends(get_db)):
-    """
-    Löscht das Profilbild eines Users
-    """
     try:
-        user = db.query(models.Users).filter(models.Users.id == user_id).first()
+        picture = db.query(models.ProfilePicture).filter(
+            models.ProfilePicture.user_id == user_id
+        ).first()
         
-        if not user:
-            raise HTTPException(status_code=404, detail="User nicht gefunden")
-        
-        if not user.profile_picture:
+        if not picture:
             raise HTTPException(status_code=404, detail="Kein Profilbild vorhanden")
         
-        # Lösche Profilbild
-        user.profile_picture = None
+        db.delete(picture)
         db.commit()
         
-        return {
-            "status": "ok",
-            "message": "Profilbild erfolgreich gelöscht"
-        }
+        return {"status": "ok", "message": "Profilbild erfolgreich gelöscht"}
         
     except HTTPException:
         raise
     except Exception as e:
         db.rollback()
-        print(f"Error deleting profile picture: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Fehler beim Löschen: {str(e)}")
 
 @router.delete("/deleteuser/{user_id}")

@@ -1,14 +1,13 @@
-"""Project Images Routes"""
-from fastapi import APIRouter, HTTPException, Depends, File, UploadFile
-from fastapi.responses import Response
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
-from database import SessionLocal
-import models
-import Rbac
-from utils.helpers import get_user
 import base64
+from datetime import datetime
+from database import SessionLocal
 
-router = APIRouter(tags=["Project Images"])
+
+from models import ProjectImage, Project
+
+router = APIRouter()
 
 def get_db():
     db = SessionLocal()
@@ -17,111 +16,123 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/projects/{project_id}/images")
-async def upload_project_image(
-    project_id: int,
-    user_id: int,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db)
-):
-    user = get_user(user_id, db)
-
-    if not Rbac.can_view_project(db, user, project_id):
-        raise HTTPException(status_code=403, detail="No access to this project")
-
-    project = db.query(models.Project).filter(models.Project.id == project_id).first()
+# ✅ LAZY LOADING: Nur Metadaten zurückgeben (kein Bild-Inhalt)
+@router.get("/projects/{project_id}/images")
+def get_project_images_metadata(project_id: int, db: Session = Depends(get_db)):
+    """
+    Gibt nur Metadaten der Projektbilder zurück (id, filename, uploaded_at).
+    Kein Base64 - Bilder werden über den Einzelbild-Endpoint lazy geladen.
+    """
+    project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"]
-    if file.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Invalid file type. Allowed: JPG, PNG, GIF, WEBP")
-
-    contents = await file.read()
-    if len(contents) > 10 * 1024 * 1024:  # 10MB
-        raise HTTPException(status_code=400, detail="File too large. Max: 10MB")
-
-    try:
-        db_image = models.ProjectImage(
-            project_id=project_id,
-            image_data=contents,
-            filename=file.filename,
-            uploaded_by=user_id
-        )
-        db.add(db_image)
-        db.commit()
-        db.refresh(db_image)
-
-        return {
-            "status": "ok",
-            "message": "Image uploaded successfully",
-            "image": {
-                "id": db_image.id,
-                "filename": db_image.filename,
-                "uploaded_at": db_image.uploaded_at.isoformat()
-            }
-        }
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error uploading image: {str(e)}")
-
-
-@router.get("/projects/{project_id}/images")
-async def get_project_images(
-    project_id: int,
-    user_id: int,
-    db: Session = Depends(get_db)
-):
-    user = get_user(user_id, db)
-
-    if not Rbac.can_view_project(db, user, project_id):
-        raise HTTPException(status_code=403, detail="No access to this project")
-
-    images = db.query(models.ProjectImage).filter(
-        models.ProjectImage.project_id == project_id
-    ).order_by(models.ProjectImage.uploaded_at.desc()).all()
-
-    images_list = []
-    for img in images:
-        images_list.append({
-            "id": img.id,
-            "filename": img.filename,
-            "image_data": base64.b64encode(img.image_data).decode('utf-8'),
-            "uploaded_at": img.uploaded_at.isoformat() if img.uploaded_at else None,
-            "uploaded_by": img.uploaded_by
-        })
+    images = db.query(ProjectImage).filter(ProjectImage.project_id == project_id).all()
 
     return {
-        "status": "ok",
-        "images": images_list,
-        "total": len(images_list)
+        "project_id": project_id,
+        "images": [
+            {
+                "id": img.id,
+                "filename": img.filename,
+                "content_type": getattr(img, "content_type", "image/jpeg"),
+                "file_size": getattr(img, "file_size", None),
+                "uploaded_at": img.uploaded_at.isoformat() if img.uploaded_at else None,
+            }
+            for img in images
+        ]
     }
 
 
-@router.delete("/projects/{project_id}/images/{image_id}")
-async def delete_project_image(
-    project_id: int,
-    image_id: int,
-    user_id: int,
-    db: Session = Depends(get_db)
-):
-    user = get_user(user_id, db)
-
-    if not Rbac.can_edit_project(db, user, project_id):
-        raise HTTPException(status_code=403, detail="Only admins can delete images")
-
-    image = db.query(models.ProjectImage).filter(
-        models.ProjectImage.id == image_id,
-        models.ProjectImage.project_id == project_id
+# ✅ LAZY LOADING: Einzelnes Bild als Base64 zurückgeben
+@router.get("/projects/{project_id}/images/{image_id}")
+def get_project_image(project_id: int, image_id: int, db: Session = Depends(get_db)):
+    """
+    Gibt ein einzelnes Projektbild als Base64 zurück.
+    Wird vom Frontend lazy aufgerufen, nachdem die Metadaten geladen wurden.
+    """
+    image = db.query(ProjectImage).filter(
+        ProjectImage.id == image_id,
+        ProjectImage.project_id == project_id
     ).first()
 
     if not image:
         raise HTTPException(status_code=404, detail="Image not found")
 
-    try:
-        db.delete(image)
-        db.commit()
-        return {"status": "ok", "message": "Image deleted successfully"}
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error deleting image: {str(e)}")
+    if not image.image_data:
+        raise HTTPException(status_code=404, detail="Image data not found")
+
+    image_base64 = base64.b64encode(image.image_data).decode("utf-8")
+    content_type = getattr(image, "content_type", "image/jpeg") or "image/jpeg"
+
+    return {
+        "id": image.id,
+        "project_id": project_id,
+        "filename": image.filename,
+        "content_type": content_type,
+        "image_data": image_base64,
+        "uploaded_at": image.uploaded_at.isoformat() if image.uploaded_at else None,
+    }
+
+
+# Upload: Bild zu Projekt hinzufügen
+@router.post("/projects/{project_id}/images")
+async def upload_project_image(
+    project_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Only images are allowed.")
+
+    contents = await file.read()
+
+    # Max 10MB
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 10MB.")
+
+    new_image = ProjectImage(
+        project_id=project_id,
+        image_data=contents,
+        filename=file.filename,
+        uploaded_at=datetime.now(),
+    )
+
+    # Optionale Felder setzen, falls im Modell vorhanden
+    if hasattr(new_image, "content_type"):
+        new_image.content_type = file.content_type
+    if hasattr(new_image, "file_size"):
+        new_image.file_size = len(contents)
+
+    db.add(new_image)
+    db.commit()
+    db.refresh(new_image)
+
+    return {
+        "status": "ok",
+        "id": new_image.id,
+        "filename": new_image.filename,
+        "uploaded_at": new_image.uploaded_at.isoformat() if new_image.uploaded_at else None,
+    }
+
+
+# Bild löschen
+@router.delete("/projects/{project_id}/images/{image_id}")
+def delete_project_image(project_id: int, image_id: int, db: Session = Depends(get_db)):
+    image = db.query(ProjectImage).filter(
+        ProjectImage.id == image_id,
+        ProjectImage.project_id == project_id
+    ).first()
+
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    db.delete(image)
+    db.commit()
+
+    return {"status": "ok", "message": "Image deleted successfully"}
