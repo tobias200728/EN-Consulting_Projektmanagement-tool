@@ -7,7 +7,7 @@ from database import SessionLocal
 
 from models import ProjectImage, Project
 
-router = APIRouter()
+router = APIRouter(tags=["Project Images"])
 
 def get_db():
     db = SessionLocal()

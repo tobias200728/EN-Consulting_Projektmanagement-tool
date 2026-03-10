@@ -1,341 +1,343 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import {
-  View, Text, ScrollView, TouchableOpacity, Modal,
-  ActivityIndicator, Dimensions, SafeAreaView
-} from 'react-native';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { styles } from '../../style/Projects.styles';
+  View, Text, Modal, TouchableOpacity,
+  ScrollView, Image, ActivityIndicator, StyleSheet
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ip_adress } from "@env";
 
-const { width } = Dimensions.get('window');
-const isMobile = width < 768;
+const API_URL = `http://${ip_adress}:8000`;
 
-const ProjectDetailModal = ({
-  visible,
-  selectedProject,
-  projectMembers = [],
-  isAdmin,
-  canEditProject,
-  canDeleteProject,
-  canManageProjectMembers,
-  loading = false,
-  onClose,
-  onOpenEditProject,
-  onOpenAddMember,
-  onDeleteProject,
-  onOpenTaskModal,
-  onEditTask,
-  onDeleteTask,
-  onMoveTask,
-  onRemoveMember,
-  getTasksByStatus,
-  getStatusLabel,
-  getImportanceColor,
-  getImportanceLabel,
-  formatDate,
-  onUpdateInterimDates,
-}) => {
-  const [menuVisible, setMenuVisible] = useState(false);
+const ProjectImageModal = ({ visible, onClose, project, isAdmin }) => {
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
-  const project = selectedProject;
+  useEffect(() => {
+    if (visible && project) {
+      loadImages();
+    }
+  }, [visible, project]);
 
-  // Task-Spalten — Backend-konforme Status-Werte
-  const todoTasks   = (project?.tasks || []).filter(t => t.status === 'todo');
-  const inProgTasks = (project?.tasks || []).filter(t => t.status === 'in_progress');
-  const doneTasks   = (project?.tasks || []).filter(t => t.status === 'completed');
-
-  const getStatusStyle = (status) => {
-    switch (status) {
-      case 'in-progress': return styles.statusInProgress;
-      case 'completed':   return styles.statusCompleted;
-      case 'planning':    return styles.statusPlanning;
-      default:            return styles.statusPlanning;
+  const loadImages = async () => {
+    try {
+      setLoading(true);
+      const id = await AsyncStorage.getItem("user_id");
+      const response = await fetch(
+        `${API_URL}/projects/${project.id}/images?user_id=${id}`
+      );
+      const data = await response.json();
+      if (response.ok && data.status === "ok") {
+        setImages(data.images || []);
+      }
+    } catch (error) {
+      console.error("Error loading images:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const renderTaskColumn = (title, tasks, statusKey) => (
-    <View style={styles.taskColumn}>
-      <View style={styles.taskColumnHeader}>
-        <Text style={styles.taskColumnTitle}>{title}</Text>
-        <Text style={styles.taskColumnCount}>{tasks.length}</Text>
-      </View>
+  const handleUpload = async () => {
+    try {
+      const ImagePicker = await import("expo-image-picker");
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") return;
 
-      {tasks.map((task, idx) => (
-        <View key={task.id || idx} style={[styles.taskItem, task.status === 'completed' && styles.taskItemCompleted]}>
-          <View style={styles.taskItemHeader}>
-            <Text style={styles.taskItemName} numberOfLines={2}>{task.name || task.title}</Text>
-            <View style={styles.taskItemActions}>
-              {(isAdmin || canEditProject) && (
-                <TouchableOpacity
-                  style={styles.taskIconButton}
-                  onPress={() => onEditTask && onEditTask(task)}
-                >
-                  <Text style={styles.taskIcon}>✏️</Text>
-                </TouchableOpacity>
-              )}
-              {(isAdmin || canEditProject) && (
-                <TouchableOpacity
-                  style={styles.taskIconButton}
-                  onPress={() => onDeleteTask && onDeleteTask(task.id)}
-                >
-                  <Text style={styles.taskIcon}>🗑</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+      });
 
-          {task.dueDate && (
-            <Text style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>
-              📅 {task.dueDate}
-            </Text>
-          )}
+      if (result.canceled) return;
 
-          {task.importance && (
-            <View style={[styles.importanceBadge, {
-              backgroundColor: getImportanceColor ? getImportanceColor(task.importance) : '#6c757d'
-            }]}>
-              <Text style={styles.importanceBadgeText}>
-                {getImportanceLabel ? getImportanceLabel(task.importance) : task.importance}
-              </Text>
-            </View>
-          )}
+      setUploading(true);
+      const id = await AsyncStorage.getItem("user_id");
+      const uri = result.assets[0].uri;
 
-          {(task.assignedTo || task.assignee_name) && (
-            <View style={styles.taskAssignee}>
-              <Text style={styles.taskAssigneeIcon}>👤</Text>
-              <Text style={styles.taskAssigneeText}>{task.assignedTo || task.assignee_name}</Text>
-            </View>
-          )}
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const filename = `project_${project.id}_${Date.now()}.jpg`;
+      const file = new File([blob], filename, { type: blob.type || "image/jpeg" });
 
-          <View style={styles.taskMoveButtons}>
-            {statusKey !== 'todo' && (
-              <TouchableOpacity
-                style={styles.moveButton}
-                onPress={() => onMoveTask && onMoveTask(
-                  task.id,
-                  statusKey === 'in_progress' ? 'todo' : 'in_progress'
-                )}
-              >
-                <Text style={styles.moveButtonText}>←</Text>
-              </TouchableOpacity>
-            )}
-            {statusKey !== 'completed' && (
-              <TouchableOpacity
-                style={styles.moveButton}
-                onPress={() => onMoveTask && onMoveTask(
-                  task.id,
-                  statusKey === 'todo' ? 'in_progress' : 'completed'
-                )}
-              >
-                <Text style={styles.moveButtonText}>→</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      ))}
+      const formData = new FormData();
+      formData.append("file", file);
 
-      {(isAdmin || canEditProject) && (
-        <TouchableOpacity
-          style={styles.addTaskButton}
-          onPress={() => onOpenTaskModal && onOpenTaskModal(statusKey)}
-        >
-          <Text style={styles.addTaskButtonText}>+ Aufgabe hinzufügen</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+      const uploadResponse = await fetch(
+        `${API_URL}/projects/${project.id}/images?user_id=${id}`,
+        { method: "POST", body: formData }
+      );
+      const uploadData = await uploadResponse.json();
+
+      if (uploadResponse.ok && uploadData.status === "ok") {
+        loadImages();
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (imageId) => {
+    try {
+      const id = await AsyncStorage.getItem("user_id");
+      const response = await fetch(
+        `${API_URL}/projects/${project.id}/images/${imageId}?user_id=${id}`,
+        { method: "DELETE" }
+      );
+      const data = await response.json();
+      if (response.ok && data.status === "ok") {
+        setImages((prev) => prev.filter((img) => img.id !== imageId));
+        if (selectedImage?.id === imageId) setSelectedImage(null);
+      }
+    } catch (error) {
+      console.error("Error deleting image:", error);
+    }
+  };
 
   return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.detailModalContent}>
-          <SafeAreaView style={{ flex: 1 }}>
+    <Modal animationType="fade" transparent visible={visible} onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <View style={styles.container}>
 
-            {/* Header — immer sichtbar */}
-            <View style={styles.detailHeader}>
-              <TouchableOpacity style={styles.backButton} onPress={onClose}>
-                <MaterialCommunityIcons name="arrow-left" size={20} color="#0a0f33" />
-                <Text style={styles.backButtonText}> Zurück</Text>
-              </TouchableOpacity>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Projektbilder</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <Text style={styles.closeBtnText}>✕</Text>
+            </TouchableOpacity>
+          </View>
 
-              {project && (canEditProject || canDeleteProject || canManageProjectMembers || isAdmin) && (
-                <View>
+          {/* Upload Button */}
+          <TouchableOpacity
+            style={[styles.uploadBtn, uploading && styles.uploadBtnDisabled]}
+            onPress={handleUpload}
+            disabled={uploading}
+          >
+            <Text style={styles.uploadBtnText}>
+              {uploading ? "Wird hochgeladen..." : "+ Bild hinzufügen"}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Fullscreen Image Viewer */}
+          {selectedImage && (
+            <Modal transparent animationType="fade">
+              <View style={styles.fullscreenOverlay}>
+                <TouchableOpacity
+                  style={styles.fullscreenClose}
+                  onPress={() => setSelectedImage(null)}
+                >
+                  <Text style={styles.fullscreenCloseText}>✕ Schließen</Text>
+                </TouchableOpacity>
+                <Image
+                  source={{ uri: `data:image/jpeg;base64,${selectedImage.image_data}` }}
+                  style={styles.fullscreenImage}
+                  resizeMode="contain"
+                />
+                {isAdmin && (
                   <TouchableOpacity
-                    style={styles.dotsButton}
-                    onPress={() => setMenuVisible(!menuVisible)}
+                    style={styles.fullscreenDelete}
+                    onPress={() => handleDelete(selectedImage.id)}
                   >
-                    <Text style={styles.dotsButtonText}>⋯</Text>
+                    <Text style={styles.fullscreenDeleteText}>Löschen</Text>
                   </TouchableOpacity>
+                )}
+              </View>
+            </Modal>
+          )}
 
-                  {menuVisible && (
-                    <>
-                      <TouchableOpacity
-                        style={styles.menuOverlay}
-                        onPress={() => setMenuVisible(false)}
-                      />
-                      <View style={styles.menuDropdown}>
-                        {(canEditProject || isAdmin) && (
-                          <TouchableOpacity
-                            style={[styles.menuItem, styles.menuItemBorder]}
-                            onPress={() => { setMenuVisible(false); onOpenEditProject && onOpenEditProject(); }}
-                          >
-                            <Text style={styles.menuItemText}>✏️  Projekt bearbeiten</Text>
-                          </TouchableOpacity>
-                        )}
-                        {(canManageProjectMembers || isAdmin) && (
-                          <TouchableOpacity
-                            style={[styles.menuItem, styles.menuItemBorder]}
-                            onPress={() => { setMenuVisible(false); onOpenAddMember && onOpenAddMember(); }}
-                          >
-                            <Text style={styles.menuItemText}>👥  Mitglied hinzufügen</Text>
-                          </TouchableOpacity>
-                        )}
-                        {(canDeleteProject || isAdmin) && (
-                          <TouchableOpacity
-                            style={[styles.menuItem, styles.menuItemDanger]}
-                            onPress={() => { setMenuVisible(false); onDeleteProject && onDeleteProject(); }}
-                          >
-                            <Text style={[styles.menuItemText, styles.menuItemTextDanger]}>🗑  Projekt löschen</Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    </>
-                  )}
-                </View>
-              )}
+          {/* Images Grid */}
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#2b5fff" />
+              <Text style={styles.loadingText}>Bilder werden geladen...</Text>
             </View>
-
-            {/* Inhalt: Spinner wenn kein Projekt, sonst alles */}
-            {!project ? (
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#2b5fff" />
-              </View>
-            ) : (
-              <ScrollView showsVerticalScrollIndicator={false}>
-
-                {/* Projekt-Info */}
-                <View style={styles.projectInfo}>
-                  <View style={styles.projectInfoHeader}>
-                    <Text style={styles.detailTitle}>{project.title || project.name}</Text>
-                    <View style={[styles.statusBadge, getStatusStyle(project.status)]}>
-                      <Text style={styles.statusText}>
-                        {getStatusLabel ? getStatusLabel(project.status) : project.status}
-                      </Text>
-                    </View>
-                  </View>
-                  {project.description ? (
-                    <Text style={styles.detailDescription}>{project.description}</Text>
-                  ) : null}
-                </View>
-
-                {/* Stats Cards */}
-                <View style={styles.statsCards}>
-                  <View style={styles.statCard}>
-                    <Text style={styles.statCardLabel}>Fortschritt</Text>
-                    <Text style={styles.statCardValue}>{project.progress || 0}%</Text>
-                    <View style={styles.progressBarDetail}>
-                      <View style={[styles.progressFillDetail, { width: `${project.progress || 0}%` }]} />
-                    </View>
-                  </View>
-
-                  <View style={styles.statCard}>
-                    <Text style={styles.statCardLabel}>Zeitraum</Text>
-                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#0a0f33' }}>
-                      {formatDate ? formatDate(project.startDate) : project.startDate}
-                    </Text>
-                    <Text style={styles.statCardSubtext}>
-                      bis {formatDate ? formatDate(project.endDate) : project.endDate}
-                    </Text>
-                  </View>
-
-                  <View style={styles.statCard}>
-                    <Text style={styles.statCardLabel}>Aufgaben</Text>
-                    <Text style={styles.statCardValue}>{(project.tasks || []).length}</Text>
-                    <Text style={styles.statCardSubtext}>{doneTasks.length} abgeschlossen</Text>
-                  </View>
-
-                  <View style={styles.statCard}>
-                    <Text style={styles.statCardLabel}>Mitglieder</Text>
-                    <Text style={styles.statCardValue}>{projectMembers.length}</Text>
-                    <Text style={styles.statCardSubtext}>im Team</Text>
-                  </View>
-                </View>
-
-                {/* Zwischentermine */}
-                {project.interimDates && project.interimDates.length > 0 && (
-                  <View style={styles.membersSection}>
-                    <Text style={styles.membersSectionTitle}>
-                      📅 Zwischentermine ({project.interimDates.length})
-                    </Text>
-                    {project.interimDates.map((date, idx) => (
-                      <Text key={idx} style={{ fontSize: 13, color: '#444', paddingVertical: 3, paddingHorizontal: 12 }}>
-                        • {formatDate ? formatDate(date) : date}
-                      </Text>
-                    ))}
-                  </View>
-                )}
-
-                {/* Teammitglieder */}
-                {projectMembers.length > 0 && (
-                  <View style={styles.membersSection}>
-                    <Text style={styles.membersSectionTitle}>
-                      Teammitglieder ({projectMembers.length})
-                    </Text>
-                    <View style={styles.membersList}>
-                      {projectMembers.map((member, idx) => (
-                        <View key={member.id || idx} style={styles.memberItem}>
-                          <View style={styles.memberInfo}>
-                            <Text style={styles.memberIcon}>👤</Text>
-                            <View>
-                              <Text style={styles.memberName}>
-                                {member.first_name || member.last_name
-                                  ? `${member.first_name || ''} ${member.last_name || ''}`.trim()
-                                  : member.name || 'Unbekannt'}
-                              </Text>
-                              <Text style={styles.memberEmail}>{member.email}</Text>
-                            </View>
-                          </View>
-                          {(isAdmin || canManageProjectMembers) && (
-                            <TouchableOpacity
-                              style={styles.removeMemberButton}
-                              onPress={() => onRemoveMember && onRemoveMember(member.id)}
-                            >
-                              <Text style={styles.removeMemberButtonText}>✕</Text>
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-                {/* Kanban Tasks */}
-                <View style={styles.tasksSection}>
-                  <View style={[styles.tasksColumns, { width: '100%' }]}>
-                    {renderTaskColumn('📋 Offen', todoTasks, 'todo')}
-                    {renderTaskColumn('⚙️ In Bearbeitung', inProgTasks, 'in_progress')}
-                    {renderTaskColumn('✅ Fertig', doneTasks, 'completed')}
-                  </View>
-                </View>
-
-                <View style={{ height: 40 }} />
-              </ScrollView>
-            )}
-
-            {loading && (
-              <View style={styles.loadingOverlay}>
-                <ActivityIndicator size="large" color="#2b5fff" />
-              </View>
-            )}
-          </SafeAreaView>
+          ) : images.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}></Text>
+              <Text style={styles.emptyTitle}>Keine Bilder vorhanden</Text>
+              <Text style={styles.emptyText}>Füge das erste Bild zum Projekt hinzu</Text>
+            </View>
+          ) : (
+            <ScrollView contentContainerStyle={styles.grid}>
+              {images.map((img) => (
+                <TouchableOpacity
+                  key={img.id}
+                  style={styles.imageWrapper}
+                  onPress={() => setSelectedImage(img)}
+                >
+                  <Image
+                    source={{ uri: `data:image/jpeg;base64,${img.image_data}` }}
+                    style={styles.thumbnail}
+                    resizeMode="cover"
+                  />
+                  {isAdmin && (
+                    <TouchableOpacity
+                      style={styles.deleteBtn}
+                      onPress={() => handleDelete(img.id)}
+                    >
+                      <Text style={styles.deleteBtnText}>✕</Text>
+                    </TouchableOpacity>
+                  )}
+                  <Text style={styles.imageFilename} numberOfLines={1}>
+                    {img.filename || "Bild"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
         </View>
       </View>
     </Modal>
   );
 };
 
-export default ProjectDetailModal;
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  container: {
+    width: "92%",
+    maxWidth: 700,
+    maxHeight: "85%",
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 20,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#0a0f33",
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#f0f0f0",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeBtnText: {
+    fontSize: 16,
+    color: "#666",
+    fontWeight: "bold",
+  },
+  uploadBtn: {
+    backgroundColor: "#2b5fff",
+    padding: 13,
+    borderRadius: 10,
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  uploadBtnDisabled: { opacity: 0.6 },
+  uploadBtnText: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  imageWrapper: {
+    width: "30%",
+    position: "relative",
+  },
+  thumbnail: {
+    width: "100%",
+    aspectRatio: 1,
+    borderRadius: 10,
+    backgroundColor: "#f0f0f0",
+  },
+  deleteBtn: {
+    position: "absolute",
+    top: 5,
+    right: 5,
+    backgroundColor: "rgba(220,53,69,0.9)",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  deleteBtnText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  imageFilename: {
+    fontSize: 10,
+    color: "#666",
+    marginTop: 4,
+    textAlign: "center",
+  },
+  loadingContainer: {
+    alignItems: "center",
+    padding: 40,
+  },
+  loadingText: {
+    marginTop: 10,
+    color: "#666",
+  },
+  emptyState: {
+    alignItems: "center",
+    padding: 50,
+  },
+  emptyIcon: { fontSize: 50, marginBottom: 15 },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#0a0f33",
+    marginBottom: 8,
+  },
+  emptyText: { fontSize: 14, color: "#666" },
+  fullscreenOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.92)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fullscreenImage: {
+    width: "90%",
+    height: "75%",
+  },
+  fullscreenClose: {
+    position: "absolute",
+    top: 40,
+    right: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    padding: 10,
+    borderRadius: 8,
+  },
+  fullscreenCloseText: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  fullscreenDelete: {
+    position: "absolute",
+    bottom: 40,
+    backgroundColor: "#dc3545",
+    padding: 12,
+    borderRadius: 10,
+  },
+  fullscreenDeleteText: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+});
+
+export default ProjectImageModal;

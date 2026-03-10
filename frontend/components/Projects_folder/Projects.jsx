@@ -429,9 +429,18 @@ const Projects = () => {
 
   // ✅ FIX: kein setLoading hier — verhindert den Loading-Overlay der das Modal überdeckt
   const openProjectDetail = async (project) => {
+    // ✅ Modal sofort öffnen mit Spinner (selectedProject = null → Spinner im Modal)
+    setSelectedProject(null);
+    setProjectMembers([]);
+    setDetailModalVisible(true);
+
     try {
       const id = await AsyncStorage.getItem('user_id');
-      if (!id) { showError("Fehler", "Keine User-ID gefunden. Bitte erneut einloggen."); return; }
+      if (!id) {
+        setDetailModalVisible(false);
+        showError("Fehler", "Keine User-ID gefunden. Bitte erneut einloggen.");
+        return;
+      }
 
       const response = await fetch(`${API_URL}/projects/${project.id}?user_id=${id}`);
       const data = await response.json();
@@ -466,6 +475,7 @@ const Projects = () => {
           } catch (e) {}
         }
 
+        // ✅ Daten setzen → Spinner verschwindet, Inhalt erscheint
         setSelectedProject({
           id: data.project.id,
           title: data.project.name,
@@ -480,11 +490,12 @@ const Projects = () => {
         });
 
         await loadProjectMembers(project.id);
-        setDetailModalVisible(true); // ✅ Modal öffnen OHNE loading-Overlay
       } else {
+        setDetailModalVisible(false);
         showError("Fehler", "Projekt konnte nicht geladen werden");
       }
     } catch (error) {
+      setDetailModalVisible(false);
       showError("Fehler", "Verbindung zum Server fehlgeschlagen");
     }
   };
@@ -799,44 +810,27 @@ const Projects = () => {
         getImportanceColor={getImportanceColor}
         getImportanceLabel={getImportanceLabel}
         formatDate={formatDate}
-      />
-
-      <AddMemberModal
-        visible={addMemberModalVisible}
-        onClose={closeAddMemberModal}
-        onSave={handleAddMember}
-        loading={loading}
+        // ✅ Sub-Modal Props — werden INNERHALB des DetailModals gerendert
+        addMemberModalVisible={addMemberModalVisible}
+        onCloseAddMember={closeAddMemberModal}
+        onSaveAddMember={handleAddMember}
         allUsers={allUsers}
         selectedUserId={selectedUserId}
         setSelectedUserId={setSelectedUserId}
-      />
-
-      <NewTaskModal
-        visible={taskModalVisible}
-        onClose={closeTaskModal}
-        onSave={handleSaveTask}
-        loading={loading}
+        editProjectModalVisible={editProjectModalVisible}
+        onCloseEditProject={() => setEditProjectModalVisible(false)}
+        onSaveEditProject={handleUpdateProject}
+        taskModalVisible={taskModalVisible}
+        onCloseTaskModal={closeTaskModal}
+        onSaveTask={handleSaveTask}
         newTask={newTask}
         setNewTask={setNewTask}
-        projectMembers={projectMembers}
-      />
-
-      <EditProjectModal
-        visible={editProjectModalVisible}
-        onClose={() => setEditProjectModalVisible(false)}
-        onSave={handleUpdateProject}
-        loading={loading}
-        selectedProject={selectedProject}
-        setSelectedProject={setSelectedProject}
-      />
-
-      <EditTaskModal
-        visible={editTaskModalVisible}
-        onClose={closeEditTaskModal}
-        onSave={handleUpdateTask}
-        loading={loading}
+        editTaskModalVisible={editTaskModalVisible}
+        onCloseEditTask={closeEditTaskModal}
+        onSaveEditTask={handleUpdateTask}
         editingTask={editingTask}
         setEditingTask={setEditingTask}
+        loading={loading}
       />
 
       <CustomAlert {...alert} onDismiss={hideAlert} />
