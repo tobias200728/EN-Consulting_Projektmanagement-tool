@@ -175,6 +175,7 @@ const Projects = () => {
               startDate: p.start_date,
               endDate: p.end_date,
               interimDates: p.interim_dates || [],
+              sharepointUrl: p.sharepoint_url || null,
               teamMembers: memberCount,
               status: p.status,
               tasks: todos
@@ -376,6 +377,44 @@ const Projects = () => {
     }
   };
 
+  // ─── SharePoint URL speichern ───────────────────────────────────────────────
+  const handleUpdateSharepointUrl = async (url) => {
+    if (!selectedProject) return;
+    try {
+      const id = await AsyncStorage.getItem('user_id');
+      const response = await fetch(
+        `${API_URL}/projects/${selectedProject.id}?user_id=${id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: selectedProject.title,
+            description: selectedProject.description,
+            status: selectedProject.status,
+            progress: selectedProject.progress,
+            start_date: selectedProject.startDate,
+            end_date: selectedProject.endDate,
+            interim_dates: selectedProject.interimDates || [],
+            sharepoint_url: url || null,
+          }),
+        }
+      );
+      const data = await response.json();
+      if (response.ok && data.status === "ok") {
+        const updated = { ...selectedProject, sharepointUrl: url || null };
+        setSelectedProject(updated);
+        setProjectsList(prev =>
+          prev.map(p => p.id === selectedProject.id ? { ...p, sharepointUrl: url || null } : p)
+        );
+        showSuccess("Erfolg", url ? "SharePoint Link gespeichert!" : "SharePoint Link entfernt!");
+      } else {
+        showError("Fehler", "SharePoint Link konnte nicht gespeichert werden");
+      }
+    } catch (error) {
+      showError("Fehler", "Verbindung zum Server fehlgeschlagen");
+    }
+  };
+
   const handleDeleteProject = async () => {
     showConfirm(
       "Projekt löschen",
@@ -484,6 +523,7 @@ const Projects = () => {
           startDate: data.project.start_date,
           endDate: data.project.end_date,
           interimDates: data.project.interim_dates || [],
+          sharepointUrl: data.project.sharepoint_url || null,
           teamMembers: memberCount,
           status: data.project.status,
           tasks: todos
@@ -797,6 +837,7 @@ const Projects = () => {
         canDeleteProject={canDeleteProject}
         canManageProjectMembers={canManageProjectMembers}
         onUpdateInterimDates={handleUpdateInterimDates}
+        onUpdateSharepointUrl={handleUpdateSharepointUrl}
         onOpenEditProject={() => setEditProjectModalVisible(true)}
         onOpenAddMember={openAddMemberModal}
         onDeleteProject={handleDeleteProject}

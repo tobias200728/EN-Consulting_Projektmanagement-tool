@@ -1,5 +1,3 @@
-// frontend/style/Projects.styles.js - KOMPLETTE DATEI
-
 import { StyleSheet, Dimensions } from 'react-native';
 
 const { width } = Dimensions.get('window');
@@ -520,9 +518,9 @@ export const styles = StyleSheet.create({
     color: 'white',
   },
 
-  // ✅ DETAIL MODAL - iOS FIX
+  // Detail Modal
   detailModalContent: {
-    width: isMobile ? '100%' : '60%',
+    width: isMobile ? '100%' : '75%',
     height: isMobile ? '100%' : '95%',
     backgroundColor: 'white',
     borderRadius: isMobile ? 0 : 15,
@@ -534,33 +532,23 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: isMobile ? 15 : 20,
-    paddingTop: isMobile ? 15 : 20, // SafeAreaView fügt automatisch Top-Padding hinzu
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
-    backgroundColor: 'white',
   },
   
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: isMobile ? 8 : 5,
-    minHeight: 44, // ✅ iOS Touch Target Minimum (Apple HIG)
-    minWidth: 44,  // ✅ iOS Touch Target Minimum
-    justifyContent: 'center',
   },
   
   backButtonText: {
-    fontSize: isMobile ? 15 : 14,
+    fontSize: 14,
     color: '#0a0f33',
     fontWeight: '500',
   },
   
   menuButton: {
-    padding: isMobile ? 8 : 5,
-    minWidth: 44,  // ✅ iOS Touch Target Minimum
-    minHeight: 44, // ✅ iOS Touch Target Minimum
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 5,
   },
   
   menuButtonText: {
@@ -646,7 +634,6 @@ export const styles = StyleSheet.create({
     flexDirection: isMobile ? 'column' : 'row',
     paddingHorizontal: isMobile ? 12 : 20,
     paddingVertical: 15,
-    paddingBottom: isMobile ? 30 : 15, // ✅ Extra Padding unten auf Mobile
     gap: 10,
     flexWrap: 'wrap',
   },
@@ -833,7 +820,6 @@ export const styles = StyleSheet.create({
     flexDirection: isMobile ? 'column' : 'row',
     gap: isMobile ? 15 : 25,
     justifyContent: 'center',
-    width: '100%',
   },
   
   taskColumn: {
@@ -1033,5 +1019,217 @@ export const styles = StyleSheet.create({
   
   saveButtonDisabled: {
     opacity: 0.6,
+  },
+
+  userListScroll: {
+    maxHeight: 250,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    backgroundColor: '#f9f9f9',
+    marginTop: 5,
+  },
+  noMembersContainer: {
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#ffc107',
+    borderRadius: 8,
+    backgroundColor: '#fff3e0',
+    marginTop: 5,
+  },
+  noMembersText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#f57c00',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  noMembersSubtext: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  interimDateInput: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+
+  addInterimButton: {
+    backgroundColor: '#2b5fff',
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  addInterimButtonText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+
+  interimDatesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+    marginBottom: 10,
+  },
+
+  interimDateChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e8f0fe',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+
+  interimDateText: {
+    color: '#2b5fff',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  removeInterimButton: {
+    color: '#2b5fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    paddingLeft: 4,
+  },
+
+  helperText: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 5,
+    fontStyle: 'italic',
+  },
+
+  // 3-Punkte Button im Header
+  dotsButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f0f0f0",
+  },
+  dotsButtonText: {
+    fontSize: 22,
+    color: "#333",
+    lineHeight: 26,
+  },
+
+  // Overlay der das Menü schließt wenn man daneben tippt
+  menuOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 100,
+  },
+
+  // Dropdown-Box
+  menuDropdown: {
+    position: "absolute",
+    top: 60,
+    right: 16,
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 10,
+    minWidth: 220,
+    overflow: "hidden",
+    zIndex: 101,
+  },
+
+  // Einzelner Menü-Eintrag
+  menuItem: {
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+  },
+  menuItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  menuItemDanger: {
+    backgroundColor: "#fff5f5",
+  },
+  menuItemText: {
+    fontSize: 15,
+    color: "#222",
+    fontWeight: "500",
+  },
+  menuItemTextDanger: {
+    color: "#dc3545",
+  },
+  imageButton: {
+    flex: 1,
+    minWidth: isMobile ? "100%" : 100,
+    padding: 14,
+    borderRadius: 10,
+    backgroundColor: "#6f42c1",
+    alignItems: "center",
+  },
+  imageButtonText: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 15,
+  },
+
+  // ─── SharePoint Styles ──────────────────────────────────────────────────────
+
+  // Quick-Button neben dem ⋮ im Header (nur wenn URL gesetzt)
+  sharepointQuickBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#e8f0fe",
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: "#c5d5fb",
+  },
+  sharepointQuickBtnText: {
+    fontSize: 13,
+    color: "#2b5fff",
+    fontWeight: "600",
+  },
+
+  // Badge in der Projekt-Info Sektion (klickbar, öffnet SharePoint)
+  sharepointBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    marginTop: 12,
+    backgroundColor: "#f0f4ff",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#d0dbff",
+    gap: 6,
+  },
+  sharepointBadgeIcon: {
+    fontSize: 14,
+  },
+  sharepointBadgeText: {
+    fontSize: 13,
+    color: "#2b5fff",
+    fontWeight: "600",
+  },
+  sharepointBadgeArrow: {
+    fontSize: 13,
+    color: "#2b5fff",
+    fontWeight: "700",
   },
 });

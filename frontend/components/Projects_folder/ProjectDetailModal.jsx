@@ -8,6 +8,8 @@ import {
   Image,
   ActivityIndicator,
   TextInput,
+  Linking,
+  Platform,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -465,6 +467,40 @@ const interimModalStyles = StyleSheet.create({
   addBtnText: { color: "white", fontSize: 24, fontWeight: "600", lineHeight: 26 },
 });
 
+// ─── SharePoint Modal Styles ──────────────────────────────────────────────────
+const sharepointModalStyles = StyleSheet.create({
+  infoBox: {
+    flexDirection: "row", alignItems: "flex-start", gap: 10,
+    backgroundColor: "#f0f4ff", borderRadius: 10, padding: 14, marginBottom: 18,
+    borderWidth: 1, borderColor: "#d0dbff",
+  },
+  infoIcon: { fontSize: 20, marginTop: 1 },
+  infoText: { flex: 1, fontSize: 13, color: "#3a4a7a", lineHeight: 19 },
+  currentLinkBox: {
+    backgroundColor: "#f8fff8", borderRadius: 10, padding: 14, marginBottom: 16,
+    borderWidth: 1, borderColor: "#b2dfdb",
+  },
+  currentLinkLabel: { fontSize: 12, color: "#555", fontWeight: "600", marginBottom: 6 },
+  currentLinkRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  currentLinkText: { flex: 1, fontSize: 13, color: "#2b5fff", textDecorationLine: "underline" },
+  openBtn: {
+    backgroundColor: "#2b5fff", paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 8, flexShrink: 0,
+  },
+  openBtnText: { color: "white", fontSize: 12, fontWeight: "600" },
+  inputLabel: { fontSize: 14, fontWeight: "600", color: "#0a0f33", marginBottom: 8 },
+  input: {
+    backgroundColor: "#f5f5f5", borderWidth: 1, borderColor: "#e0e0e0",
+    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 14, color: "#0a0f33", marginBottom: 10,
+  },
+  clearBtn: {
+    alignSelf: "flex-start", paddingHorizontal: 12, paddingVertical: 6,
+    backgroundColor: "#ffebee", borderRadius: 8, marginBottom: 20,
+  },
+  clearBtnText: { fontSize: 12, color: "#dc3545", fontWeight: "600" },
+});
+
 // ─── Main ProjectDetailModal ──────────────────────────────────────────────────
 const ProjectDetailModal = ({
   visible,
@@ -490,6 +526,7 @@ const ProjectDetailModal = ({
   getImportanceLabel,
   formatDate,
   onUpdateInterimDates,
+  onUpdateSharepointUrl,
   loading = false,
   // ✅ Sub-Modal Props
   addMemberModalVisible,
@@ -518,6 +555,11 @@ const ProjectDetailModal = ({
   const [newInterimDate, setNewInterimDate] = useState("");
   const [interimDates, setInterimDates] = useState([]);
   const [savingInterim, setSavingInterim] = useState(false);
+
+  // ─── SharePoint State ───────────────────────────────────────────────────────
+  const [sharepointModalVisible, setSharepointModalVisible] = useState(false);
+  const [sharepointInput, setSharepointInput] = useState("");
+  const [savingSharepoint, setSavingSharepoint] = useState(false);
 
   React.useEffect(() => {
     if (selectedProject?.interimDates) {
@@ -550,6 +592,33 @@ const ProjectDetailModal = ({
     setInterimModalVisible(false);
   };
 
+  // ─── SharePoint Handlers ────────────────────────────────────────────────────
+  const openSharepointModal = () => {
+    setSharepointInput(selectedProject?.sharepointUrl || "");
+    setSharepointModalVisible(true);
+  };
+
+  const openSharepointLink = () => {
+    let url = selectedProject?.sharepointUrl;
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+    if (Platform.OS === "web") {
+      window.open(url, "_blank");
+    } else {
+      Linking.openURL(url).catch(() => {});
+    }
+  };
+
+  const saveSharepointUrl = async () => {
+    if (!onUpdateSharepointUrl) return;
+    setSavingSharepoint(true);
+    let url = sharepointInput.trim();
+    if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
+    await onUpdateSharepointUrl(url);
+    setSavingSharepoint(false);
+    setSharepointModalVisible(false);
+  };
+
   return (
     <Modal animationType="fade" transparent visible={visible} onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
@@ -568,9 +637,12 @@ const ProjectDetailModal = ({
                 <TouchableOpacity onPress={onClose} style={styles.backButton}>
                   <Text style={styles.backButtonText}>← Zurück zu Projekte</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.dotsButton} onPress={() => setMenuVisible(true)}>
-                  <Text style={styles.dotsButtonText}>⋮</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  
+                  <TouchableOpacity style={styles.dotsButton} onPress={() => setMenuVisible(true)}>
+                    <Text style={styles.dotsButtonText}>⋮</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {/* Dropdown Menü */}
@@ -583,7 +655,7 @@ const ProjectDetailModal = ({
                         style={[styles.menuItem, styles.menuItemBorder]}
                         onPress={() => { setMenuVisible(false); onOpenEditProject(); }}
                       >
-                        <Text style={styles.menuItemText}>Bearbeiten</Text>
+                        <Text style={styles.menuItemText}> Bearbeiten</Text>
                       </TouchableOpacity>
                     )}
                     {canManageProjectMembers && (
@@ -591,29 +663,47 @@ const ProjectDetailModal = ({
                         style={[styles.menuItem, styles.menuItemBorder]}
                         onPress={() => { setMenuVisible(false); onOpenAddMember(); }}
                       >
-                        <Text style={styles.menuItemText}>Mitarbeiter hinzufügen</Text>
+                        <Text style={styles.menuItemText}> Mitarbeiter hinzufügen</Text>
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity
                       style={[styles.menuItem, styles.menuItemBorder]}
                       onPress={() => { setMenuVisible(false); setImageGalleryVisible(true); }}
                     >
-                      <Text style={styles.menuItemText}>Bilder</Text>
+                      <Text style={styles.menuItemText}> Bilder</Text>
                     </TouchableOpacity>
                     {canEditProject && (
                       <TouchableOpacity
                         style={[styles.menuItem, styles.menuItemBorder]}
                         onPress={() => { setMenuVisible(false); openInterimModal(); }}
                       >
-                        <Text style={styles.menuItemText}>Zwischentermine hinzufügen</Text>
+                        <Text style={styles.menuItemText}> Zwischentermine</Text>
                       </TouchableOpacity>
                     )}
+                    {/* SharePoint Link einfügen/bearbeiten */}
+                    {canEditProject && (
+                      <TouchableOpacity
+                        style={[styles.menuItem, styles.menuItemBorder]}
+                        onPress={() => { setMenuVisible(false); openSharepointModal(); }}
+                      >
+                        <Text style={styles.menuItemText}> SharePoint Link</Text>
+                      </TouchableOpacity>
+                    )}
+                    {/* SharePoint direkt öffnen (wenn URL vorhanden) */}
+                    {selectedProject?.sharepointUrl ? (
+                      <TouchableOpacity
+                        style={[styles.menuItem, styles.menuItemBorder]}
+                        onPress={() => { setMenuVisible(false); openSharepointLink(); }}
+                      >
+                        <Text style={[styles.menuItemText, { color: "#2b5fff" }]}>↗ SharePoint öffnen</Text>
+                      </TouchableOpacity>
+                    ) : null}
                     {canDeleteProject && (
                       <TouchableOpacity
                         style={[styles.menuItem, styles.menuItemDanger]}
                         onPress={() => { setMenuVisible(false); onDeleteProject(); }}
                       >
-                        <Text style={[styles.menuItemText, styles.menuItemTextDanger]}>Löschen</Text>
+                        <Text style={[styles.menuItemText, styles.menuItemTextDanger]}> Löschen</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -634,6 +724,15 @@ const ProjectDetailModal = ({
                   </View>
                 </View>
                 <Text style={styles.detailDescription}>{selectedProject?.description}</Text>
+
+                {/* SharePoint Badge (sichtbar für alle, wenn URL gesetzt) */}
+                {selectedProject?.sharepointUrl ? (
+                  <TouchableOpacity style={styles.sharepointBadge} onPress={openSharepointLink}>
+                    <Text style={styles.sharepointBadgeIcon}>🔗</Text>
+                    <Text style={styles.sharepointBadgeText} numberOfLines={1}>SharePoint</Text>
+                    <Text style={styles.sharepointBadgeArrow}>↗</Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
 
               {/* Stats Cards */}
@@ -730,7 +829,7 @@ const ProjectDetailModal = ({
                             <TouchableOpacity onPress={() => onEditTask(task)} style={styles.taskIconButton}><Text>✏️</Text></TouchableOpacity>
                             <TouchableOpacity onPress={() => onDeleteTask(task.id)} style={styles.taskIconButton}><Text>🗑</Text></TouchableOpacity>
                           </View>
-                          {task.dueDate && <Text style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>📅 {task.dueDate}</Text>}
+                          {task.dueDate && <Text style={{ fontSize: 11, color: "#888", marginBottom: 4 }}> {task.dueDate}</Text>}
                           <View style={[styles.importanceBadge, { backgroundColor: getImportanceColor(task.importance) }]}>
                             <Text style={styles.importanceBadgeText}>{getImportanceLabel(task.importance)}</Text>
                           </View>
@@ -763,7 +862,7 @@ const ProjectDetailModal = ({
                           <View style={styles.taskItemHeader}>
                             <Text style={styles.taskItemName}>{task.name}</Text>
                           </View>
-                          {task.dueDate && <Text style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>📅 {task.dueDate}</Text>}
+                          {task.dueDate && <Text style={{ fontSize: 11, color: "#888", marginBottom: 4 }}> {task.dueDate}</Text>}
                           <View style={[styles.importanceBadge, { backgroundColor: getImportanceColor(task.importance) }]}>
                             <Text style={styles.importanceBadgeText}>{getImportanceLabel(task.importance)}</Text>
                           </View>
@@ -792,7 +891,7 @@ const ProjectDetailModal = ({
                           <View style={styles.taskItemHeader}>
                             <Text style={styles.taskItemName}>{task.name}</Text>
                           </View>
-                          {task.dueDate && <Text style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>📅 {task.dueDate}</Text>}
+                          {task.dueDate && <Text style={{ fontSize: 11, color: "#888", marginBottom: 4 }}> {task.dueDate}</Text>}
                           <View style={[styles.importanceBadge, { backgroundColor: getImportanceColor(task.importance) }]}>
                             <Text style={styles.importanceBadgeText}>{getImportanceLabel(task.importance)}</Text>
                           </View>
@@ -816,7 +915,7 @@ const ProjectDetailModal = ({
         </View>
       </View>
 
-      {/* ✅ SUB-MODALS — innerhalb des äußeren <Modal>, erscheinen IMMER darüber */}
+      {/* ✅ SUB-MODALS */}
 
       {/* Zwischentermine Modal */}
       <Modal animationType="fade" transparent visible={interimModalVisible} onRequestClose={() => setInterimModalVisible(false)}>
@@ -873,6 +972,79 @@ const ProjectDetailModal = ({
                   disabled={savingInterim}
                 >
                   <Text style={styles.saveButtonText}>{savingInterim ? "Wird gespeichert..." : "Speichern"}</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* SharePoint Modal */}
+      <Modal animationType="fade" transparent visible={sharepointModalVisible} onRequestClose={() => setSharepointModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>🔗 SharePoint Link</Text>
+              <TouchableOpacity onPress={() => setSharepointModalVisible(false)} style={styles.closeButton}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView>
+              <View style={sharepointModalStyles.infoBox}>
+                <Text style={sharepointModalStyles.infoIcon}>ℹ️</Text>
+                <Text style={sharepointModalStyles.infoText}>
+                  Füge den SharePoint-Link für dieses Projekt ein. Danach kannst du direkt aus dem Projekt auf SharePoint zugreifen.
+                </Text>
+              </View>
+
+              {/* Aktueller Link anzeigen */}
+              {selectedProject?.sharepointUrl ? (
+                <View style={sharepointModalStyles.currentLinkBox}>
+                  <Text style={sharepointModalStyles.currentLinkLabel}>Aktueller Link</Text>
+                  <View style={sharepointModalStyles.currentLinkRow}>
+                    <Text style={sharepointModalStyles.currentLinkText} numberOfLines={2}>
+                      {selectedProject.sharepointUrl}
+                    </Text>
+                    <TouchableOpacity style={sharepointModalStyles.openBtn} onPress={openSharepointLink}>
+                      <Text style={sharepointModalStyles.openBtnText}>↗ Öffnen</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : null}
+
+              <Text style={sharepointModalStyles.inputLabel}>
+                {selectedProject?.sharepointUrl ? "Link ändern" : "Link einfügen"}
+              </Text>
+              <TextInput
+                style={sharepointModalStyles.input}
+                placeholder="https://firmenname.sharepoint.com/..."
+                value={sharepointInput}
+                onChangeText={setSharepointInput}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+
+              {/* Link löschen */}
+              {selectedProject?.sharepointUrl ? (
+                <TouchableOpacity
+                  style={sharepointModalStyles.clearBtn}
+                  onPress={() => setSharepointInput("")}
+                >
+                  <Text style={sharepointModalStyles.clearBtnText}>✕ Link entfernen</Text>
+                </TouchableOpacity>
+              ) : null}
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setSharepointModalVisible(false)}>
+                  <Text style={styles.cancelButtonText}>Abbrechen</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.saveButton, savingSharepoint && styles.saveButtonDisabled]}
+                  onPress={saveSharepointUrl}
+                  disabled={savingSharepoint}
+                >
+                  <Text style={styles.saveButtonText}>{savingSharepoint ? "Wird gespeichert..." : "Speichern"}</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>
