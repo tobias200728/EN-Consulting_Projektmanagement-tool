@@ -24,7 +24,7 @@ import * as ImagePicker from "expo-image-picker";
 const API_URL = `http://${ip_adress}:8000`;
 
 // ─── Inline Image Gallery Modal ───────────────────────────────────────────────
-const ImageGalleryModal = ({ visible, onClose, project, isAdmin }) => {
+const ImageGalleryModal = ({ visible, onClose, project, isAdmin, canUpload }) => {
   const [images, setImages] = useState([]);
   const [imageData, setImageData] = useState({}); // { [img.id]: base64string }
   const [loading, setLoading] = useState(false);
@@ -166,23 +166,25 @@ const ImageGalleryModal = ({ visible, onClose, project, isAdmin }) => {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            style={[
-              galleryStyles.uploadBtn,
-              uploading && galleryStyles.uploadBtnDisabled,
-            ]}
-            onPress={handleUpload}
-            disabled={uploading}
-          >
-            {uploading ? (
-              <View style={galleryStyles.uploadBtnInner}>
-                <ActivityIndicator size="small" color="white" />
-                <Text style={galleryStyles.uploadBtnText}>Wird hochgeladen...</Text>
-              </View>
-            ) : (
-              <Text style={galleryStyles.uploadBtnText}>+ Bild hinzufügen</Text>
-            )}
-          </TouchableOpacity>
+          {canUpload && (
+            <TouchableOpacity
+              style={[
+                galleryStyles.uploadBtn,
+                uploading && galleryStyles.uploadBtnDisabled,
+              ]}
+              onPress={handleUpload}
+              disabled={uploading}
+            >
+              {uploading ? (
+                <View style={galleryStyles.uploadBtnInner}>
+                  <ActivityIndicator size="small" color="white" />
+                  <Text style={galleryStyles.uploadBtnText}>Wird hochgeladen...</Text>
+                </View>
+              ) : (
+                <Text style={galleryStyles.uploadBtnText}>+ Bild hinzufügen</Text>
+              )}
+            </TouchableOpacity>
+          )}
 
           {loading ? (
             <View style={galleryStyles.center}>
@@ -638,7 +640,6 @@ const ProjectDetailModal = ({
                   <Text style={styles.backButtonText}>← Zurück zu Projekte</Text>
                 </TouchableOpacity>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  
                   <TouchableOpacity style={styles.dotsButton} onPress={() => setMenuVisible(true)}>
                     <Text style={styles.dotsButtonText}>⋮</Text>
                   </TouchableOpacity>
@@ -655,7 +656,7 @@ const ProjectDetailModal = ({
                         style={[styles.menuItem, styles.menuItemBorder]}
                         onPress={() => { setMenuVisible(false); onOpenEditProject(); }}
                       >
-                        <Text style={styles.menuItemText}> Bearbeiten</Text>
+                        <Text style={styles.menuItemText}>Bearbeiten</Text>
                       </TouchableOpacity>
                     )}
                     {canManageProjectMembers && (
@@ -663,21 +664,21 @@ const ProjectDetailModal = ({
                         style={[styles.menuItem, styles.menuItemBorder]}
                         onPress={() => { setMenuVisible(false); onOpenAddMember(); }}
                       >
-                        <Text style={styles.menuItemText}> Mitarbeiter hinzufügen</Text>
+                        <Text style={styles.menuItemText}>👤 Mitarbeiter hinzufügen</Text>
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity
                       style={[styles.menuItem, styles.menuItemBorder]}
                       onPress={() => { setMenuVisible(false); setImageGalleryVisible(true); }}
                     >
-                      <Text style={styles.menuItemText}> Bilder</Text>
+                      <Text style={styles.menuItemText}>Bilder</Text>
                     </TouchableOpacity>
                     {canEditProject && (
                       <TouchableOpacity
                         style={[styles.menuItem, styles.menuItemBorder]}
                         onPress={() => { setMenuVisible(false); openInterimModal(); }}
                       >
-                        <Text style={styles.menuItemText}> Zwischentermine</Text>
+                        <Text style={styles.menuItemText}>Zwischentermine</Text>
                       </TouchableOpacity>
                     )}
                     {/* SharePoint Link einfügen/bearbeiten */}
@@ -686,7 +687,7 @@ const ProjectDetailModal = ({
                         style={[styles.menuItem, styles.menuItemBorder]}
                         onPress={() => { setMenuVisible(false); openSharepointModal(); }}
                       >
-                        <Text style={styles.menuItemText}> SharePoint Link</Text>
+                        <Text style={styles.menuItemText}>SharePoint Link</Text>
                       </TouchableOpacity>
                     )}
                     {/* SharePoint direkt öffnen (wenn URL vorhanden) */}
@@ -695,7 +696,7 @@ const ProjectDetailModal = ({
                         style={[styles.menuItem, styles.menuItemBorder]}
                         onPress={() => { setMenuVisible(false); openSharepointLink(); }}
                       >
-                        <Text style={[styles.menuItemText, { color: "#2b5fff" }]}>↗ SharePoint öffnen</Text>
+                        <Text style={[styles.menuItemText, { color: "#2b5fff" }]}>↗️ SharePoint öffnen</Text>
                       </TouchableOpacity>
                     ) : null}
                     {canDeleteProject && (
@@ -829,7 +830,7 @@ const ProjectDetailModal = ({
                             <TouchableOpacity onPress={() => onEditTask(task)} style={styles.taskIconButton}><Text>✏️</Text></TouchableOpacity>
                             <TouchableOpacity onPress={() => onDeleteTask(task.id)} style={styles.taskIconButton}><Text>🗑</Text></TouchableOpacity>
                           </View>
-                          {task.dueDate && <Text style={{ fontSize: 11, color: "#888", marginBottom: 4 }}> {task.dueDate}</Text>}
+                          {task.dueDate && <Text style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{task.dueDate}</Text>}
                           <View style={[styles.importanceBadge, { backgroundColor: getImportanceColor(task.importance) }]}>
                             <Text style={styles.importanceBadgeText}>{getImportanceLabel(task.importance)}</Text>
                           </View>
@@ -862,7 +863,7 @@ const ProjectDetailModal = ({
                           <View style={styles.taskItemHeader}>
                             <Text style={styles.taskItemName}>{task.name}</Text>
                           </View>
-                          {task.dueDate && <Text style={{ fontSize: 11, color: "#888", marginBottom: 4 }}> {task.dueDate}</Text>}
+                          {task.dueDate && <Text style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>{task.dueDate}</Text>}
                           <View style={[styles.importanceBadge, { backgroundColor: getImportanceColor(task.importance) }]}>
                             <Text style={styles.importanceBadgeText}>{getImportanceLabel(task.importance)}</Text>
                           </View>
@@ -984,7 +985,7 @@ const ProjectDetailModal = ({
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>🔗 SharePoint Link</Text>
+              <Text style={styles.modalTitle}>SharePoint Link</Text>
               <TouchableOpacity onPress={() => setSharepointModalVisible(false)} style={styles.closeButton}>
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
@@ -1006,7 +1007,7 @@ const ProjectDetailModal = ({
                       {selectedProject.sharepointUrl}
                     </Text>
                     <TouchableOpacity style={sharepointModalStyles.openBtn} onPress={openSharepointLink}>
-                      <Text style={sharepointModalStyles.openBtnText}>↗ Öffnen</Text>
+                      <Text style={sharepointModalStyles.openBtnText}>↗️ Öffnen</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1059,6 +1060,7 @@ const ProjectDetailModal = ({
           onClose={() => setImageGalleryVisible(false)}
           project={selectedProject}
           isAdmin={isAdmin}
+          canUpload={canEditProject}
         />
       )}
 
